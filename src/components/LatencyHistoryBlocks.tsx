@@ -50,17 +50,19 @@ function computeTooltipCoords(
   return { top, left };
 }
 
+type LatencyBlockProps = {
+  sample: LatencySample;
+  theme: "light" | "dark";
+  colorConfig: LatencyColorConfig;
+  mean: number | null;
+};
+
 function LatencyBlock({
   sample,
   theme,
   colorConfig,
   mean,
-}: {
-  sample: LatencySample;
-  theme: "light" | "dark";
-  colorConfig: LatencyColorConfig;
-  mean: number | null;
-}) {
+}: LatencyBlockProps) {
   const hasData = sample.ms > 0 && sample.t > 0;
   const triggerRef = React.useRef<HTMLSpanElement>(null);
   const panelRef = React.useRef<HTMLDivElement>(null);
@@ -213,13 +215,14 @@ export function LatencyHistoryBlocks({
       <span className="text-neutral-500/30 ml-1">
         {"["}
         {blocks.map((sample, i) => (
-          <LatencyBlock
-            key={`${sample.t}-${i}`}
-            sample={sample}
-            theme={theme}
-            colorConfig={colorConfig}
-            mean={mean}
-          />
+          <React.Fragment key={`${sample.t}-${i}`}>
+            <LatencyBlock
+              sample={sample}
+              theme={theme}
+              colorConfig={colorConfig}
+              mean={mean}
+            />
+          </React.Fragment>
         ))}
         {"]"}
       </span>

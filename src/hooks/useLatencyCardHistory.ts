@@ -36,7 +36,10 @@ async function fetchLatencyHistories(
   call: ReturnType<typeof useRPC2Call>["call"],
   nodeUuids: string[],
 ): Promise<Map<string, LatencySample[]>> {
-  const entries = await mapWithConcurrency(
+  const entries = await mapWithConcurrency<
+    string,
+    [string, LatencySample[]]
+  >(
     nodeUuids,
     CONCURRENCY,
     async (uuid) => {
@@ -49,9 +52,9 @@ async function fetchLatencyHistories(
           result?.records ?? [],
           result?.tasks ?? [],
         );
-        return [uuid, samples] as const;
+        return [uuid, samples] as [string, LatencySample[]];
       } catch {
-        return [uuid, []] as const;
+        return [uuid, [] as LatencySample[]];
       }
     },
   );
