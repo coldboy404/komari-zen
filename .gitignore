@@ -6,4 +6,4 @@ coverage/
 *.log
 .env*
 !.env.example
-zen-theme.zip
+zen-theme-v*.zip

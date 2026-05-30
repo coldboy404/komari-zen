@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
-    "pack": "npm run build && rm -f zen-theme.zip && zip -r zen-theme.zip komari-theme.json preview.png dist/",
+    "pack": "npm run build && rm -f zen-theme-v*.zip && zip -r zen-theme-v$(node -p \"require('./package.json').version\").zip komari-theme.json preview.png dist/",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
