@@ -14,34 +14,34 @@
   --color-neutral-50: #f6f6f4;
   --color-neutral-100: #efefed;
   --color-neutral-200: #e2e2df;
-  --color-neutral-300: #cacac6;
-  --color-neutral-400: #9c9c98;
-  --color-neutral-500: #7b7b77;
-  --color-neutral-600: #565652;
-  --color-neutral-700: #4a4a46;
-  --color-neutral-800: #2e2e2c;
-  --color-neutral-900: #242422;
-  --color-neutral-950: #1a1a18;
+  --color-neutral-300: #c7c6bf;
+  --color-neutral-400: #a5a49c;
+  --color-neutral-500: #7c7b72;
+  --color-neutral-600: #54534d;
+  --color-neutral-700: #3b3a36;
+  --color-neutral-800: #2f2e2b;
+  --color-neutral-900: #252420;
+  --color-neutral-950: #1a1916;
 }
 
 /* Semantic surface tokens — switch with the .dark class. Tune the whole
    light/dark backdrop here. */
 :root {
-  --zen-bg: #eeedea;       /* page backdrop (light) */
-  --zen-surface: #f7f7f5;  /* raised: menus, popovers, tooltips */
-  --zen-fg: #4a4a48;       /* base text */
+  --zen-bg: #dad8ca;       /* page backdrop (light) — soft warm paper */
+  --zen-surface: #e7e5da;  /* raised: menus, popovers, tooltips */
+  --zen-fg: #383733;       /* base text — kept crisp, contrast lives here */
 
   /* Cards: a barely-there fill + hairline border so tiles separate gently
      without hard boxes. Tune the whole card look from here. */
-  --zen-elevate: rgba(255, 255, 255, 0.55);
+  --zen-elevate: rgba(255, 255, 255, 0.22);
   --zen-line: rgba(20, 20, 19, 0.10);
   --zen-line-strong: rgba(20, 20, 19, 0.20);
 }
 
 .dark {
-  --zen-bg: #1f1f21;       /* page backdrop (dark) — lifted off pure black */
-  --zen-surface: #27272a;  /* raised surfaces */
-  --zen-fg: #c4c4c0;       /* base text — dimmed to cut glare */
+  --zen-bg: #1c1b19;       /* page backdrop (dark) — soft warm charcoal */
+  --zen-surface: #252321;  /* raised surfaces */
+  --zen-fg: #cac9c2;       /* base text — eased back to cut glare on the deep bg */
 
   --zen-elevate: rgba(255, 255, 255, 0.025);
   --zen-line: rgba(255, 255, 255, 0.08);

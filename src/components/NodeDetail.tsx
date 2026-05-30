@@ -191,15 +191,12 @@ const MiniLineChart = ({
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
-      className={`px-4 py-4 -mx-4 rounded-md border-b border-dashed transition-all duration-300 flex flex-col space-y-3 bg-transparent cursor-crosshair ${
-        theme === "dark"
-          ? "border-neutral-900/60 hover:bg-neutral-900/20 hover:border-neutral-800"
-          : "border-neutral-300/40 hover:bg-neutral-500/[0.025] hover:border-neutral-400/30"
-      }`}
+      className="group py-2 flex flex-col space-y-3 cursor-crosshair"
     >
-      <div className="flex flex-wrap justify-between items-baseline gap-y-1 select-none">
-        <span className={`font-bold tracking-wider uppercase ${zenType.section} ${theme === "dark" ? "text-neutral-400" : "text-neutral-500"} font-mono`}>{title}</span>
-        <div className={`flex flex-wrap items-center gap-2 sm:gap-3 ${zenType.data} font-mono select-none font-bold`}>
+      <div className="flex items-center gap-3 select-none">
+        <span className={`shrink-0 font-bold tracking-wider uppercase ${zenType.section} ${theme === "dark" ? "text-neutral-400" : "text-neutral-500"} font-mono`}>{title}</span>
+        <span className="h-px flex-1 bg-zen-line" aria-hidden />
+        <div className={`shrink-0 flex items-center justify-end gap-2 sm:gap-3 ${zenType.data} font-mono select-none font-bold`}>
           {isHovering && (
             <span className={`${zenType.label} text-[#f59e0b] bg-[#f59e0b]/15 px-1 py-0.5 rounded tracking-wide uppercase font-black`}>
               {formatChartOffsetLabel(
@@ -493,6 +490,17 @@ export function NodeDetail({
   const textBody = theme === "dark" ? "text-neutral-300" : "text-neutral-700";
   const textSecondary = theme === "dark" ? "text-neutral-400" : "text-neutral-600";
 
+  const SectionHeading = ({ children }: { children: React.ReactNode }) => (
+    <div className="flex items-center gap-3">
+      <span
+        className={`shrink-0 font-bold ${zenType.section} zen-track-tight uppercase ${textSecondary} font-mono`}
+      >
+        {children}
+      </span>
+      <span className="h-px flex-1 bg-zen-line" aria-hidden />
+    </div>
+  );
+
   const loadTotals = loadTotalsFromNode(node);
 
   const buildHistory = (metric: Parameters<typeof buildMetricHistory>[0]) =>
@@ -615,9 +623,7 @@ export function NodeDetail({
           <div className="grid grid-cols-1 gap-x-16 gap-y-8 md:grid-cols-2 pt-2">
             {/* Column 1: Hardware Specifications */}
             <div className="space-y-4">
-              <span className={`block font-bold ${zenType.section} zen-track-tight uppercase ${textSecondary} font-mono`}>
-                {t.hardwareSpec}
-              </span>
+              <SectionHeading>{t.hardwareSpec}</SectionHeading>
               <div className={`grid grid-cols-2 gap-y-3 ${zenType.data} font-mono border-b pb-6 border-transparent`}>
                 <span className={textMuted}>{t.lblCpuVendor}</span>
                 <span className={`font-bold ${textPrimary}`}>{node.cpuVendor}</span>
@@ -641,9 +647,7 @@ export function NodeDetail({
 
             {/* Column 2: System Loads & Memory */}
             <div className="space-y-4">
-              <span className={`block font-bold ${zenType.section} zen-track-tight uppercase ${textSecondary} font-mono`}>
-                {t.capacityLoads}
-              </span>
+              <SectionHeading>{t.capacityLoads}</SectionHeading>
               <div className="space-y-4">
                 <div>
                   <div className={`flex justify-between ${zenType.data} ${textSecondary} mb-1.5 tracking-wider font-mono`}>
@@ -673,9 +677,7 @@ export function NodeDetail({
 
             {/* Column 3: Disk */}
             <div className="space-y-4 pt-4">
-              <span className={`block font-bold ${zenType.section} zen-track-tight uppercase ${textSecondary} font-mono`}>
-                {t.storageFs}
-              </span>
+              <SectionHeading>{t.storageFs}</SectionHeading>
               <div className="space-y-4">
                 <div>
                   <div className={`flex justify-between ${zenType.data} ${textSecondary} mb-1.5 tracking-wider font-mono`}>
@@ -691,9 +693,7 @@ export function NodeDetail({
 
             {/* Column 4: Network Throughput and Speeds */}
             <div className="space-y-4 pt-4">
-              <span className={`block font-bold ${zenType.section} zen-track-tight uppercase ${textSecondary} font-mono`}>
-                {t.networkIo}
-              </span>
+              <SectionHeading>{t.networkIo}</SectionHeading>
               <div className="grid grid-cols-2 gap-x-8 font-mono">
                 {/* RX Block */}
                 <div className="space-y-3">
@@ -751,7 +751,7 @@ export function NodeDetail({
           {/* [05] UNIFIED DYNAMIC HARDWARE TIMESERIES & SYSTEM PROCESS TELEMETRY / LATENCY MONITORING */}
           {recordEnabled && (
           <div className="space-y-6 pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3 pb-3 border-b border-neutral-200/15 dark:border-neutral-800/40">
+            <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3">
               <div className="flex justify-center md:justify-start min-w-0">
                 <span className={`font-bold ${zenType.section} zen-track-tight uppercase ${textSecondary} font-mono`}>
                   {subSection === "metrics"

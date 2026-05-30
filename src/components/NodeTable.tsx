@@ -318,7 +318,7 @@ export function NodeTable({
   // Styling helpers
   const textPrimary = theme === "dark" ? "text-neutral-300" : "text-neutral-700";
   const textMuted = theme === "dark" ? "text-neutral-500" : "text-neutral-500";
-  const borderBottomClass = theme === "dark" ? "border-neutral-800" : "border-neutral-200";
+  const borderBottomClass = "border-zen-line-strong";
 
   return (
     <div className={`space-y-8 font-sans ${zenType.body} ${theme === "dark" ? "text-neutral-300" : "text-neutral-700"}`}>
@@ -540,7 +540,7 @@ export function NodeTable({
                       : node.cpuUsage > 40 
                       ? theme === "dark" 
                         ? "text-amber-400 font-bold" 
-                        : "text-amber-500 font-bold" 
+                        : "text-amber-600 font-bold" 
                       : textPrimary;
 
                   const memPercent = (node.memoryUsed / node.memoryTotal) * 100;
@@ -552,11 +552,11 @@ export function NodeTable({
                       : memPercent > 50 
                       ? theme === "dark" 
                         ? "text-amber-400 font-bold" 
-                        : "text-amber-500 font-bold" 
+                        : "text-amber-600 font-bold" 
                       : textPrimary;
 
-                  const cpuFilledDots = Math.round((node.cpuUsage / 100) * 8);
-                  const memFilledDots = Math.round((memPercent / 100) * 8);
+                  const cpuFilledDots = Math.round((node.cpuUsage / 100) * 10);
+                  const memFilledDots = Math.round((memPercent / 100) * 10);
                   const diskPercent = (node.diskUsed / node.diskTotal) * 100;
                   const diskColor =
                     diskPercent > 80
@@ -566,9 +566,9 @@ export function NodeTable({
                       : diskPercent > 50 
                       ? theme === "dark" 
                         ? "text-amber-400 font-bold" 
-                        : "text-amber-500 font-bold" 
+                        : "text-amber-600 font-bold" 
                       : textPrimary;
-                  const diskFilledDots = Math.round((diskPercent / 100) * 8);
+                  const diskFilledDots = Math.round((diskPercent / 100) * 10);
  
                   return (
                     <tr
@@ -625,7 +625,7 @@ export function NodeTable({
                             <span className="text-neutral-500/30 ml-1 font-mono">
                               {"["}
                               <span className={cpuColor}>{"■".repeat(cpuFilledDots)}</span>
-                              {"·".repeat(Math.max(0, 8 - cpuFilledDots))}
+                              {"·".repeat(Math.max(0, 10 - cpuFilledDots))}
                               {"]"}
                             </span>
                           </span>
@@ -642,7 +642,7 @@ export function NodeTable({
                             <span className="text-neutral-500/30 ml-1.5 font-mono">
                               {"["}
                               <span className={memColor}>{"■".repeat(memFilledDots)}</span>
-                              {"·".repeat(Math.max(0, 8 - memFilledDots))}
+                              {"·".repeat(Math.max(0, 10 - memFilledDots))}
                               {"]"}
                             </span>
                           </span>
@@ -659,7 +659,7 @@ export function NodeTable({
                             <span className="text-neutral-500/30 ml-1.5 font-mono">
                               {"["}
                               <span className={diskColor}>{"■".repeat(diskFilledDots)}</span>
-                              {"·".repeat(Math.max(0, 8 - diskFilledDots))}
+                              {"·".repeat(Math.max(0, 10 - diskFilledDots))}
                               {"]"}
                             </span>
                           </span>
@@ -736,7 +736,7 @@ export function NodeTable({
                   : node.cpuUsage > 40 
                   ? theme === "dark" 
                     ? "text-amber-400 font-bold" 
-                    : "text-amber-500 font-bold" 
+                    : "text-amber-600 font-bold" 
                   : textPrimary;
 
               const memPercent = (node.memoryUsed / node.memoryTotal) * 100;
@@ -748,13 +748,13 @@ export function NodeTable({
                   : memPercent > 50 
                   ? theme === "dark" 
                     ? "text-amber-400 font-bold" 
-                    : "text-amber-500 font-bold" 
+                    : "text-amber-600 font-bold" 
                   : textPrimary;
 
               // Simple ASCII textual micro progress indicator
-              const filledDots = Math.round((node.cpuUsage / 100) * 8);
+              const filledDots = Math.round((node.cpuUsage / 100) * 10);
 
-              const memFilledDots = Math.round((memPercent / 100) * 8);
+              const memFilledDots = Math.round((memPercent / 100) * 10);
 
               const diskPercent = (node.diskUsed / node.diskTotal) * 100;
               const diskColor =
@@ -765,9 +765,9 @@ export function NodeTable({
                   : diskPercent > 50 
                   ? theme === "dark" 
                     ? "text-amber-400 font-bold" 
-                    : "text-amber-500 font-bold" 
+                    : "text-amber-600 font-bold" 
                   : textPrimary;
-              const diskFilledDots = Math.round((diskPercent / 100) * 8);
+              const diskFilledDots = Math.round((diskPercent / 100) * 10);
 
               return (
                 <div
@@ -825,7 +825,7 @@ export function NodeTable({
                           <span className="text-neutral-500/30 ml-1 font-mono">
                             {"["}
                             <span className={cpuColor}>{"■".repeat(filledDots)}</span>
-                            {"·".repeat(Math.max(0, 8 - filledDots))}
+                            {"·".repeat(Math.max(0, 10 - filledDots))}
                             {"]"}
                           </span>
                         </span>
@@ -841,7 +841,7 @@ export function NodeTable({
                           <span className="text-neutral-500/30 ml-1.5 font-mono">
                             {"["}
                             <span className={memColor}>{"■".repeat(memFilledDots)}</span>
-                            {"·".repeat(Math.max(0, 8 - memFilledDots))}
+                            {"·".repeat(Math.max(0, 10 - memFilledDots))}
                             {"]"}
                           </span>
                         </span>
@@ -857,7 +857,7 @@ export function NodeTable({
                           <span className="text-neutral-500/30 ml-1.5 font-mono">
                             {"["}
                             <span className={diskColor}>{"■".repeat(diskFilledDots)}</span>
-                            {"·".repeat(Math.max(0, 8 - diskFilledDots))}
+                            {"·".repeat(Math.max(0, 10 - diskFilledDots))}
                             {"]"}
                           </span>
                         </span>
