@@ -31,6 +31,7 @@ interface NodeTableProps {
 }
 
 type SortField =
+  | "default"
   | "status"
   | "name"
   | "os"
@@ -41,6 +42,19 @@ type SortField =
   | "days";
 
 type SortOrder = "asc" | "desc";
+
+/** Maps the admin config option string to the internal sort field. */
+const SORT_FIELD_MAP: Record<string, SortField> = {
+  Default: "default",
+  Name: "name",
+  CPU: "cpu",
+  Memory: "mem",
+  Disk: "disk",
+  Latency: "latency",
+  Expiry: "days",
+  Status: "status",
+  OS: "os",
+};
 
 function getOSDetails(os: string, arch: string) {
   const upperOS = os.toUpperCase();
@@ -82,25 +96,44 @@ export function NodeTable({
   lang,
   theme,
 }: NodeTableProps) {
+  const t = translations[lang];
+  const {
+    showExpiryTime,
+    defaultViewMode,
+    defaultSortField,
+    defaultSortOrder,
+  } = useThemeSettings();
+  const initialSortField = SORT_FIELD_MAP[defaultSortField] ?? "default";
+  const initialSortOrder: SortOrder =
+    defaultSortOrder === "Descending" ? "desc" : "asc";
+
   const [activeGroup, setActiveGroup] = useState<string>(ALL_NODE_GROUP);
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [sortField, setSortField] = useState<SortField>("name");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
+  const [sortField, setSortField] = useState<SortField>(initialSortField);
+  const [sortOrder, setSortOrder] = useState<SortOrder>(initialSortOrder);
   const [isSortMenuOpen, setIsSortMenuOpen] = useState<boolean>(false);
+  const userSortedRef = React.useRef(false);
 
-  const t = translations[lang];
-  const { showExpiryTime, defaultViewMode } = useThemeSettings();
   const { viewMode, effectiveViewMode, setViewMode } = useViewMode(defaultViewMode);
   const { recordEnabled } = useRecordSettings();
 
+  // Apply admin-configured default until the user manually changes the sort.
+  React.useEffect(() => {
+    if (userSortedRef.current) return;
+    setSortField(initialSortField);
+    setSortOrder(initialSortOrder);
+  }, [initialSortField, initialSortOrder]);
+
   React.useEffect(() => {
     if (!recordEnabled && sortField === "latency") {
-      setSortField("name");
+      setSortField("default");
     }
   }, [recordEnabled, sortField]);
 
   const getFieldLabel = (field: SortField) => {
     switch (field) {
+      case "default":
+        return t.sortDefault;
       case "status":
         return t.status;
       case "name":
@@ -123,6 +156,7 @@ export function NodeTable({
   };
 
   const sortOptions: { value: SortField; label: string }[] = [
+    { value: "default", label: t.sortDefault },
     { value: "name", label: t.name },
     { value: "cpu", label: t.cpu },
     { value: "mem", label: t.mem },
@@ -215,7 +249,7 @@ export function NodeTable({
 
   useEffect(() => {
     if (!showExpiryTime && sortField === "days") {
-      setSortField("name");
+      setSortField("default");
     }
   }, [showExpiryTime, sortField]);
 
@@ -237,8 +271,10 @@ export function NodeTable({
     });
   }, [nodes, activeGroup, searchTerm]);
 
-  // Sorting
+  // Sorting — "default" keeps the order returned by the Komari backend
+  // (already weighted + offline-positioned upstream in useKomariNodes).
   const sortedNodes = useMemo(() => {
+    if (sortField === "default") return filteredNodes;
     return [...filteredNodes].sort((a, b) => {
       // Offline/down nodes are automatically grouped/forced at the bottom
       if (a.online !== b.online) {
@@ -302,6 +338,7 @@ export function NodeTable({
     7;
 
   const handleSort = (field: SortField) => {
+    userSortedRef.current = true;
     if (sortField === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
@@ -417,7 +454,10 @@ export function NodeTable({
               onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
               className={`cursor-pointer select-none bg-transparent hover:text-emerald-500 font-bold border-b border-dashed ${theme === "dark" ? "border-neutral-800" : "border-neutral-300"} pb-0.5 flex items-center gap-1 uppercase transition-colors`}
             >
-              {getFieldLabel(sortField)} ({sortOrder === "asc" ? t.sortAsc : t.sortDesc})
+              {getFieldLabel(sortField)}
+              {sortField !== "default"
+                ? ` (${sortOrder === "asc" ? t.sortAsc : t.sortDesc})`
+                : ""}
             </button>
             {isSortMenuOpen && (
               <>
@@ -441,7 +481,10 @@ export function NodeTable({
                         <button
                           key={opt.value}
                           onClick={() => {
-                            if (isCurrent) {
+                            userSortedRef.current = true;
+                            if (opt.value === "default") {
+                              setSortField("default");
+                            } else if (isCurrent) {
                               setSortOrder(sortOrder === "asc" ? "desc" : "asc");
                             } else {
                               setSortField(opt.value);
@@ -450,13 +493,13 @@ export function NodeTable({
                             setIsSortMenuOpen(false);
                           }}
                           className={`w-full text-left px-3 py-2 md:py-1.5 ${zenType.caption} tracking-wider uppercase font-mono transition-colors flex items-center justify-between ${
-                            theme === "dark" 
-                              ? isCurrent ? "bg-neutral-800 text-neutral-300 font-bold" : "hover:bg-neutral-800/50 hover:text-neutral-300"
-                              : isCurrent ? "bg-neutral-100 text-neutral-700 font-bold" : "hover:bg-neutral-50 hover:text-neutral-700"
+                            isCurrent
+                              ? "bg-neutral-500/12 text-emerald-600 dark:text-emerald-400 font-bold"
+                              : "hover:bg-neutral-500/10"
                           }`}
                         >
                           <span>{opt.label}</span>
-                          {isCurrent && (
+                          {isCurrent && opt.value !== "default" && (
                             <span className={`text-emerald-500 ${zenType.micro}`}>
                               {sortOrder === "asc" ? "▲" : "▼"}
                             </span>
@@ -466,9 +509,10 @@ export function NodeTable({
                     })}
                   </div>
                   {/* Footer toggle button */}
-                  <div className={`border-t p-1 ${theme === "dark" ? "border-neutral-800 bg-zen-surface" : "border-neutral-100 bg-neutral-50"}`}>
+                  <div className="border-t p-1 border-neutral-500/15">
                     <button
                       onClick={() => {
+                        userSortedRef.current = true;
                         setSortOrder(sortOrder === "asc" ? "desc" : "asc");
                         setIsSortMenuOpen(false);
                       }}

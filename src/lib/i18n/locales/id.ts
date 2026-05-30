@@ -31,7 +31,8 @@ export const id = {
   connectionOffline: "▲ OFFLINE",
   loading: "MEMUAT...",
   matchingInstances: "HASIL FILTER",
-  sort: "KOLOM URUTAN",
+  sort: "URUTAN",
+  sortDefault: "DEFAULT",
   noInstances: "--- TIDAK ADA SERVER YANG SESUAI FILTER ---",
   hostOfflineWarning:
     "Host offline atau agen monitor terputus. Metrik penggunaan sumber daya tidak tersedia.",

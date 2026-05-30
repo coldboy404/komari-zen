@@ -34,6 +34,7 @@ export type Messages = {
   loading: string;
   matchingInstances: string;
   sort: string;
+  sortDefault: string;
   noInstances: string;
   hostOfflineWarning: string;
   vpsHostOffline: string;

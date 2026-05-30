@@ -8,8 +8,6 @@ Gemini Flash 3.5 设计，Composer 2.5 实现。
 
 地址：https://k.kkkk.li
 
-![preview](./preview.png)
-
 ## 安装
 
 1. 在 [Releases](https://github.com/qwer-xyz/komari-zen/releases) 下载对应版本的 `zen-theme-v*.zip`（例如 `zen-theme-v1.0.0.zip`）

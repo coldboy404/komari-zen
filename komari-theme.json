@@ -2,7 +2,7 @@
   "name": "Komari Zen",
   "short": "Zen",
   "description": "基于极简主义设计理念的 Komari 主题。",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "qwer-xyz",
   "url": "https://github.com/qwer-xyz/komari-zen",
   "preview": "preview.png",
@@ -59,6 +59,34 @@
         "help": {
           "en": "Default layout for the node list. Users can switch in the dashboard; their choice is saved in the browser.",
           "zh-CN": "节点列表的默认展示方式。用户可在前台切换视图，切换后将保存在浏览器本地。"
+        }
+      },
+      {
+        "key": "defaultSortField",
+        "type": "select",
+        "name": {
+          "en": "Default sort field",
+          "zh-CN": "默认排序指标"
+        },
+        "options": "Default,Name,CPU,Memory,Disk,Latency,Expiry,Status,OS",
+        "default": "Default",
+        "help": {
+          "en": "Default ordering of the node list. 'Default' keeps the exact order returned by the Komari backend.",
+          "zh-CN": "节点列表的默认排序。选择 Default 则保持 Komari 后台返回的顺序，其余按所选指标排序。"
+        }
+      },
+      {
+        "key": "defaultSortOrder",
+        "type": "select",
+        "name": {
+          "en": "Default sort order",
+          "zh-CN": "默认排序方向"
+        },
+        "options": "Ascending,Descending",
+        "default": "Ascending",
+        "help": {
+          "en": "Sort direction used with the field above (ignored when the field is 'Default').",
+          "zh-CN": "配合上面的排序指标使用的方向；指标为 Default 时忽略。"
         }
       },
       {

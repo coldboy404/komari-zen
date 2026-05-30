@@ -8,6 +8,8 @@ export type ThemeSettings = {
   showExpiryTime: boolean;
   customFooterHtml: string;
   defaultViewMode: NodeViewMode;
+  defaultSortField: string;
+  defaultSortOrder: string;
 };
 
 export function useThemeSettings(): ThemeSettings {
@@ -19,5 +21,7 @@ export function useThemeSettings(): ThemeSettings {
     showExpiryTime: raw.showExpiryTime !== false,
     customFooterHtml: (raw.customFooterHtml as string | undefined) ?? "",
     defaultViewMode: parseDefaultViewMode(raw.defaultViewMode),
+    defaultSortField: (raw.defaultSortField as string | undefined) ?? "Default",
+    defaultSortOrder: (raw.defaultSortOrder as string | undefined) ?? "Ascending",
   };
 }

@@ -476,7 +476,7 @@ export function LatencyProbePanel({
                           {avg >= 100 ? avg.toFixed(0) : avg.toFixed(1)}ms
                         </span>
                         <span
-                          className={`border-l pl-1 border-neutral-400/10 ${lossVal > 0 ? "text-amber-500" : "text-neutral-400"}`}
+                          className={`border-l pl-1 border-neutral-400/10 ${lossVal > 0 ? "text-amber-600 dark:text-amber-500" : "text-neutral-500 dark:text-neutral-400"}`}
                         >
                           {lossVal.toFixed(1)}%
                         </span>
@@ -484,8 +484,8 @@ export function LatencyProbePanel({
                           <span
                             className={`border-l pl-1 border-neutral-400/10 ${
                               volatility > 0.3
-                                ? "text-orange-400"
-                                : "text-neutral-400"
+                                ? "text-orange-600 dark:text-orange-400"
+                                : "text-neutral-500 dark:text-neutral-400"
                             }`}
                             title={t.pingVolatility}
                           >

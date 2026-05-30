@@ -31,7 +31,8 @@ export const en = {
   connectionOffline: "▲ OFFLINE",
   loading: "LIVE...",
   matchingInstances: "RETRIEVED NODES GROUP",
-  sort: "SORTING FIELD",
+  sort: "SORT",
+  sortDefault: "DEFAULT",
   noInstances: "--- NO INSTANCES CONFORMING TO APPLIED CRITERIA ---",
   hostOfflineWarning:
     "THE CONNECTED HOST IS OFFLINE OR THE MONITORING AGENT HAS DISCONNECTED. RESOURCE UTILIZATION METRICS ARE UNAVAILABLE.",

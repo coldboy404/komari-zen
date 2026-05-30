@@ -31,7 +31,8 @@ export const ja = {
   connectionOffline: "▲ オフライン",
   loading: "読込中...",
   matchingInstances: "フィルター結果",
-  sort: "ソート項目",
+  sort: "並び替え",
+  sortDefault: "デフォルト",
   noInstances: "--- 条件に一致するサーバーがありません ---",
   hostOfflineWarning:
     "ホストがオフライン、または監視エージェントが切断されました。リソース使用率を取得できません。",
