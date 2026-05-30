@@ -1,0 +1,86 @@
+{
+  "name": "Komari Zen",
+  "short": "Zen",
+  "description": "基于极简主义设计理念的 Komari 主题。",
+  "version": "1.0.0",
+  "author": "qwer-xyz",
+  "url": "https://github.com/qwer-xyz/komari-zen",
+  "preview": "preview.png",
+  "configuration": {
+    "type": "managed",
+    "name": {
+      "en": "Zen Theme Settings",
+      "zh-CN": "Zen 主题设置"
+    },
+    "data": [
+      {
+        "name": {
+          "en": "General",
+          "zh-CN": "通用"
+        },
+        "type": "title"
+      },
+      {
+        "key": "offlineServerPosition",
+        "type": "select",
+        "name": {
+          "en": "Offline Server Position",
+          "zh-CN": "离线节点位置"
+        },
+        "options": "First,Keep,Last",
+        "default": "Last",
+        "help": {
+          "en": "Where offline nodes appear in the list.",
+          "zh-CN": "离线节点在列表中的显示位置。"
+        }
+      },
+      {
+        "key": "showExpiryTime",
+        "type": "switch",
+        "name": {
+          "en": "Show expiry & billing",
+          "zh-CN": "显示到期时间"
+        },
+        "default": true,
+        "help": {
+          "en": "Show expiry date and price in the node table and cards.",
+          "zh-CN": "在节点列表与卡片中显示到期时间与价格信息。"
+        }
+      },
+      {
+        "key": "defaultViewMode",
+        "type": "select",
+        "name": {
+          "en": "Default view mode",
+          "zh-CN": "默认视图模式"
+        },
+        "options": "Card,List",
+        "default": "Card",
+        "help": {
+          "en": "Default layout for the node list. Users can switch in the dashboard; their choice is saved in the browser.",
+          "zh-CN": "节点列表的默认展示方式。用户可在前台切换视图，切换后将保存在浏览器本地。"
+        }
+      },
+      {
+        "name": {
+          "en": "Footer",
+          "zh-CN": "页脚"
+        },
+        "type": "title"
+      },
+      {
+        "key": "customFooterHtml",
+        "type": "string",
+        "name": {
+          "en": "Custom footer content",
+          "zh-CN": "自定义页脚内容"
+        },
+        "default": "",
+        "help": {
+          "en": "Extra HTML or text below the theme credit line (e.g. ICP filing number).",
+          "zh-CN": "显示在主题署名下方的自定义内容，可填写备案号等。支持 HTML。"
+        }
+      }
+    ]
+  }
+}
