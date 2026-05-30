@@ -4,6 +4,7 @@
  */
 
 import React from "react";
+import { ArrowLeft } from "lucide-react";
 import { VPSNode } from "../types";
 import { translations, Lang, type Messages } from "../lib/i18n";
 import type { LiveRecord } from "@/types/LiveData";
@@ -29,6 +30,7 @@ import {
   scaleSpeedValue,
   formatSpeedAxisMax,
   formatStoragePair,
+  formatUpdatedAt,
 } from "@/lib/formatUnits";
 import { Flag } from "@/components/Flag";
 import { OsIcon } from "@/components/OsIcon";
@@ -43,6 +45,7 @@ interface NodeDetailProps {
   lang: Lang;
   theme: "light" | "dark";
   recentRecords?: LiveRecord[];
+  onBack?: () => void;
 }
 
 const isNum = (v: number | null): v is number =>
@@ -161,7 +164,7 @@ const MiniLineChart = ({
   const axisMaxLabel =
     unitMode === "speed"
       ? formatSpeedAxisMax(rawMax)
-      : `${chartMax.toFixed(0)}${unit}`;
+      : `${chartMax.toFixed(0)}${unitMode === "percent" ? unit : ""}`;
 
   const showDecimals = decimals ?? unitMode === "percent";
 
@@ -271,7 +274,7 @@ const MiniLineChart = ({
       className="group py-2 flex flex-col space-y-3 cursor-crosshair"
     >
       <div className="flex items-center gap-3 select-none">
-        <span className={`shrink-0 font-bold tracking-wider uppercase ${zenType.section} ${theme === "dark" ? "text-neutral-400" : "text-neutral-500"} font-mono`}>{title}</span>
+        <span className={`shrink-0 font-extrabold tracking-wider uppercase ${zenType.body} ${theme === "dark" ? "text-neutral-300" : "text-neutral-700"} font-mono`}>{title}</span>
         <span className="h-px flex-1 bg-zen-line" aria-hidden />
         <div className={`shrink-0 flex items-center justify-end gap-2 sm:gap-3 ${zenType.data} font-mono select-none font-bold`}>
           {isHovering && (
@@ -386,22 +389,34 @@ const MiniLineChart = ({
             />
           )}
 
-          {/* Bullet points: Active / Hover state */}
-          {lastIdx1 >= 0 && (
-            <g>
-              <circle cx={activeX} cy={activeY1} r={isHovering ? "4" : "3"} fill={color} />
-              {!isHovering && points1[lastIdx1] && (
-                <circle cx={points1[lastIdx1]!.x} cy={points1[lastIdx1]!.y} r="6" fill="none" stroke={color} strokeWidth="1" className="animate-pulse" />
-              )}
-            </g>
-          )}
-
-          {points2 && lastValidIndex(chartData2 ?? []) >= 0 && (
-            <g>
-              <circle cx={activeX} cy={activeY2} r={isHovering ? "4" : "3"} fill={color2} />
-            </g>
-          )}
         </svg>
+
+        {/* Hover point markers only — HTML overlay so they stay perfectly round
+            despite the non-uniform SVG stretch (preserveAspectRatio="none"). */}
+        {isHovering && lastIdx1 >= 0 && (
+          <span
+            className="absolute rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+            style={{
+              left: `${(activeX / width) * 100}%`,
+              top: `${(activeY1 / height) * 100}%`,
+              width: 9,
+              height: 9,
+              backgroundColor: color,
+            }}
+          />
+        )}
+        {isHovering && points2 && lastValidIndex(chartData2 ?? []) >= 0 && (
+          <span
+            className="absolute rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+            style={{
+              left: `${(activeX / width) * 100}%`,
+              top: `${(activeY2 / height) * 100}%`,
+              width: 9,
+              height: 9,
+              backgroundColor: color2,
+            }}
+          />
+        )}
 
         {isHovering && (
           <div
@@ -442,7 +457,7 @@ const MiniLineChart = ({
           MAX: {axisMaxLabel}
         </div>
         <div className={`absolute bottom-0.5 left-1 ${zenType.micro} leading-none ${labelColor} pointer-events-none select-none`}>
-          MIN: {unitMode === "speed" ? "0" : `0${unit}`}
+          MIN: {unitMode === "percent" ? `0${unit}` : "0"}
         </div>
         </>
         )}
@@ -454,11 +469,56 @@ const MiniLineChart = ({
 };
 
 
+function splitTextAtFirstLine(
+  text: string,
+  maxWidth: number,
+  referenceEl: HTMLElement,
+): { first: string; rest: string } {
+  if (!text || maxWidth <= 0) return { first: text, rest: "" };
+
+  const style = getComputedStyle(referenceEl);
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return { first: text, rest: "" };
+
+  ctx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+  const measure = (value: string) => ctx.measureText(value).width;
+
+  if (measure(text) <= maxWidth) return { first: text, rest: "" };
+
+  let lo = 1;
+  let hi = text.length;
+  let best = 1;
+
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (measure(text.slice(0, mid)) <= maxWidth) {
+      best = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+
+  let splitAt = best;
+  const spaceIdx = text.lastIndexOf(" ", splitAt);
+  if (spaceIdx > 0) splitAt = spaceIdx;
+
+  const first = text.slice(0, splitAt).trimEnd();
+  const rest = text.slice(splitAt).trimStart();
+  if (!first) {
+    return { first: text.slice(0, best), rest: text.slice(best).trimStart() };
+  }
+  return { first, rest };
+}
+
+
 export function NodeDetail({
   node,
   lang,
   theme,
   recentRecords = [],
+  onBack,
 }: NodeDetailProps) {
   const t = translations[lang];
   const { recordEnabled, loadPresets, pingPresets } = useRecordSettings();
@@ -547,7 +607,7 @@ export function NodeDetail({
                 <div className={`w-full h-full rounded-[1px] transition-all duration-300 ${colorClass}`} />
               ) : (
                 <div className={`w-[2px] h-[2px] rounded-full transition-all duration-300 ${
-                  theme === "dark" ? "bg-neutral-800" : "bg-neutral-300/60"
+                  theme === "dark" ? "bg-neutral-700" : "bg-neutral-400/70"
                 }`} />
               )}
             </div>
@@ -562,14 +622,14 @@ export function NodeDetail({
 
   // Design accent variables
   const textPrimary = theme === "dark" ? "text-neutral-300" : "text-neutral-700";
-  const textMuted = theme === "dark" ? "text-neutral-500" : "text-neutral-500";
+  const textMuted = theme === "dark" ? "text-neutral-400 font-medium" : "text-neutral-600 font-medium";
   const textBody = theme === "dark" ? "text-neutral-300" : "text-neutral-700";
   const textSecondary = theme === "dark" ? "text-neutral-400" : "text-neutral-600";
 
   const SectionHeading = ({ children }: { children: React.ReactNode }) => (
     <div className="flex items-center gap-3">
       <span
-        className={`shrink-0 font-bold ${zenType.section} zen-track-tight uppercase ${textSecondary} font-mono`}
+        className={`shrink-0 font-extrabold ${zenType.body} zen-track-tight uppercase ${textSecondary} font-mono`}
       >
         {children}
       </span>
@@ -651,39 +711,115 @@ export function NodeDetail({
   const privateRemarkText = node.privateRemark.trim();
   const hasPublicRemark = publicRemarkText.length > 0;
   const hasPrivateRemark = privateRemarkText.length > 0;
-  const showNodeMeta = hasTags || hasPublicRemark || hasPrivateRemark;
+  const showNodeMeta = hasPublicRemark || hasPrivateRemark;
+  const groupName = node.nodeGroup.trim();
+  const hasHeaderMeta = groupName.length > 0 || hasTags;
+  const headerMetaClass =
+    "text-sm font-black tracking-widest uppercase font-mono leading-none";
+  const hasClientVersion = node.clientVersion.trim().length > 0;
+  const createdAtLabel = formatUpdatedAt(node.createdAt);
+  const hasCreatedAt = createdAtLabel !== "—";
+  const titleLineClass = `font-black leading-snug ${textPrimary} text-xl sm:text-2xl tracking-tight break-words`;
+  const titleRowRef = React.useRef<HTMLDivElement>(null);
+  const titleMeasureRef = React.useRef<HTMLSpanElement>(null);
+  const [{ first: titleFirstLine, rest: titleRest }, setTitleSplit] = React.useState({
+    first: node.name,
+    rest: "",
+  });
+
+  React.useLayoutEffect(() => {
+    const row = titleRowRef.current;
+    const measureEl = titleMeasureRef.current;
+    if (!row || !measureEl) return;
+
+    const run = () => {
+      const nameSlot = row.querySelector<HTMLElement>("[data-title-slot]");
+      const width = nameSlot?.clientWidth ?? 0;
+      if (width <= 0) {
+        setTitleSplit({ first: node.name, rest: "" });
+        return;
+      }
+      setTitleSplit(splitTextAtFirstLine(node.name, width, measureEl));
+    };
+
+    run();
+    const ro = new ResizeObserver(run);
+    ro.observe(row);
+    return () => ro.disconnect();
+  }, [node.name]);
 
   return (
     <div className={`font-sans ${zenType.body} select-none space-y-6 md:space-y-8 pt-1 pb-4`}>
-      {/* Title block - Pure Typography */}
-      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-y-2">
-        <div>
-          <span className={`${zenType.section} zen-track-tight uppercase ${textMuted} block mb-1 font-mono`}>
-            {t.detailedReport}
-          </span>
-          <h2 className={`font-black ${textPrimary} text-xl sm:text-2xl tracking-tight uppercase flex items-center gap-3`}>
-            <Flag flag={node.flag} className="w-6 h-6 shrink-0" />
-            {node.name}
-          </h2>
-        </div>
-        <div>
-          {node.online ? (
-            <span className="text-[#10b981] font-black text-sm tracking-widest uppercase font-mono">
-              {t.hostOnline}
-            </span>
-          ) : (
-            <span className="text-red-500 font-black text-sm tracking-widest uppercase font-mono">
-              {t.connectionOffline}
-            </span>
-          )}
+      {/* Title block — back inline with node name */}
+      <div className="space-y-2.5 md:space-y-3">
+        <div className="flex flex-col gap-2.5 md:flex-row md:items-center md:justify-between md:gap-x-10 lg:gap-x-14">
+          <div className="min-w-0 flex-1">
+            <span
+              ref={titleMeasureRef}
+              className={`${titleLineClass} pointer-events-none fixed left-[-9999px] top-0 opacity-0`}
+              aria-hidden="true"
+            />
+            <h2 className="absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0">
+              {node.name}
+            </h2>
+            <div ref={titleRowRef} className="flex items-center gap-x-3">
+              {onBack ? (
+                <button
+                  type="button"
+                  onClick={onBack}
+                  aria-label={t.backToList}
+                  className={`group inline-flex shrink-0 items-center gap-1.5 rounded-md border border-zen-line px-2.5 py-1.5 font-mono ${zenType.caption} font-bold tracking-wider uppercase leading-none cursor-pointer transition-all ${
+                    theme === "dark"
+                      ? "bg-zen-surface/50 text-neutral-400 hover:border-neutral-600 hover:text-neutral-200 hover:bg-zen-elevate"
+                      : "bg-zen-surface/80 text-neutral-500 hover:border-neutral-400 hover:text-neutral-800 hover:bg-neutral-100"
+                  }`}
+                >
+                  <ArrowLeft className="h-3.5 w-3.5 transition-transform duration-200 group-hover:-translate-x-0.5" />
+                  {t.backToList}
+                </button>
+              ) : null}
+              <Flag flag={node.flag} className="h-6 w-6 shrink-0" aria-hidden="true" />
+              <span data-title-slot className="min-w-0 flex-1" aria-hidden="true">
+                <span className={titleLineClass}>{titleFirstLine}</span>
+              </span>
+            </div>
+            {titleRest ? (
+              <p className={titleLineClass} aria-hidden="true">
+                {titleRest}
+              </p>
+            ) : null}
+          </div>
+          {hasHeaderMeta ? (
+            <div className="inline-flex max-w-full flex-wrap items-center gap-x-3 gap-y-1.5 md:justify-end shrink-0 leading-normal">
+              {groupName ? (
+                <span className={`${headerMetaClass} ${textSecondary} shrink-0`}>
+                  {groupName}
+                </span>
+              ) : null}
+              {groupName && hasTags ? (
+                <span
+                  className={`${headerMetaClass} font-light opacity-40 ${textMuted} shrink-0 select-none`}
+                  aria-hidden
+                >
+                  /
+                </span>
+              ) : null}
+              {hasTags ? (
+                <NodeTags
+                  tags={node.tags}
+                  theme={theme}
+                  size="header"
+                  maxVisible={99}
+                  spaced
+                />
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
 
       {showNodeMeta ? (
         <div className="space-y-2.5">
-          {hasTags ? (
-            <NodeTags tags={node.tags} theme={theme} size="md" maxVisible={99} />
-          ) : null}
           {hasPublicRemark ? (
             <div
               className={`font-mono ${zenType.data} leading-relaxed ${
@@ -746,111 +882,162 @@ export function NodeDetail({
                   {node.os}
                 </span>
 
+                {node.kernelVersion ? (
+                  <>
+                    <span className={textMuted}>{t.lblKernel}</span>
+                    <span className={`font-bold ${textPrimary} break-all`}>{node.kernelVersion}</span>
+                  </>
+                ) : null}
+
+                {node.virtualization ? (
+                  <>
+                    <span className={textMuted}>{t.lblVirtualization}</span>
+                    <span className={`font-bold ${textPrimary}`}>{node.virtualization}</span>
+                  </>
+                ) : null}
+
+                {node.gpuName ? (
+                  <>
+                    <span className={textMuted}>{t.lblGpu}</span>
+                    <span className={`font-bold ${textPrimary} break-all`}>{node.gpuName}</span>
+                  </>
+                ) : null}
+
                 <span className={textMuted}>{t.lblUptimeSec}</span>
                 <span className={`font-bold ${textPrimary}`}>{node.uptime}</span>
+
+                <div className={`col-span-2 flex items-center gap-2 pt-2 ${zenType.data} ${textSecondary} tracking-wider font-mono uppercase`}>
+                  <span className="font-bold shrink-0">{t.agentInfo}</span>
+                  <span className="h-px flex-1 bg-zen-line" aria-hidden />
+                </div>
+
+                {hasClientVersion ? (
+                  <>
+                    <span className={textMuted}>{t.lblKomariVersion}</span>
+                    <span className={`font-bold ${textPrimary}`}>
+                      {node.clientVersion.trim()}
+                    </span>
+                  </>
+                ) : null}
+
+                {hasCreatedAt ? (
+                  <>
+                    <span className={textMuted}>{t.lblCreatedAt}</span>
+                    <span className={`font-bold ${textPrimary}`}>
+                      {createdAtLabel}
+                    </span>
+                  </>
+                ) : null}
+
+                <span className={textMuted}>{t.lblLastUpdated}</span>
+                <span className={`font-bold ${textPrimary}`}>
+                  {formatUpdatedAt(node.updatedAt)}
+                </span>
               </div>
             </div>
 
             {/* Column 2: System Loads & Memory */}
             <div className="space-y-4">
               <SectionHeading>{t.capacityLoads}</SectionHeading>
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div>
-                  <div className={`flex justify-between ${zenType.data} ${textSecondary} mb-1.5 tracking-wider font-mono`}>
+                  <div className={`flex justify-between ${zenType.data} ${textSecondary} mb-2 tracking-wider font-mono`}>
                     <span>{t.lblCpuLoadUtil}</span>
                     <span className={`font-black ${textPrimary} font-mono text-xs`}>{node.cpuUsage.toFixed(1)}%</span>
                   </div>
-                  {renderProgressBar(node.cpuUsage, "bg-emerald-500/40")}
-                  <div className={`${zenType.caption} ${textMuted} mt-1.5 font-mono`}>
+                  {renderProgressBar(node.cpuUsage, "bg-emerald-500/80")}
+                  <div className={`${zenType.caption} ${textMuted} mt-2 font-mono`}>
                     {t.lblLoadAvg} [{node.load5}]
                   </div>
                 </div>
 
                 <div>
-                  <div className={`flex justify-between ${zenType.data} ${textSecondary} mb-1.5 tracking-wider font-mono`}>
+                  <div className={`flex justify-between ${zenType.data} ${textSecondary} mb-2 tracking-wider font-mono`}>
                     <span>{t.lblMemoryAllocated}</span>
                     <span className={`font-black ${textPrimary} font-mono text-xs`}>
                       {formatStoragePair(node.memoryUsed, node.memoryTotal)}
                     </span>
                   </div>
-                  {renderProgressBar(memPercent, "bg-blue-500/40")}
-                  <div className={`${zenType.caption} ${textMuted} mt-1.5 font-mono`}>
+                  {renderProgressBar(memPercent, "bg-blue-500/80")}
+                  <div className={`${zenType.caption} ${textMuted} mt-2 font-mono`}>
                     SWAP: {formatStoragePair(node.swapUsed, node.swapTotal)}
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Column 3: Disk */}
-            <div className="space-y-4 pt-4">
-              <SectionHeading>{t.storageFs}</SectionHeading>
-              <div className="space-y-4">
-                <div>
-                  <div className={`flex justify-between ${zenType.data} ${textSecondary} mb-1.5 tracking-wider font-mono`}>
-                    <span className="font-bold">{t.lblDisk}</span>
-                    <span className={`font-black ${textPrimary} text-xs`}>
+                <div className="pt-2">
+                  <div className={`flex justify-between ${zenType.data} ${textSecondary} mb-2 tracking-wider font-mono`}>
+                    <span>{t.lblDisk}</span>
+                    <span className={`font-black ${textPrimary} font-mono text-xs`}>
                       {node.diskUsed.toFixed(1)} GB / {node.diskTotal.toFixed(1)} GB
                     </span>
                   </div>
-                  {renderProgressBar(diskPercent, "bg-amber-500/40")}
-                </div>
-              </div>
-            </div>
-
-            {/* Column 4: Network Throughput and Speeds */}
-            <div className="space-y-4 pt-4">
-              <SectionHeading>{t.networkIo}</SectionHeading>
-              <div className="grid grid-cols-2 gap-x-8 font-mono">
-                {/* RX Block */}
-                <div className="space-y-3">
-                  <div className={`${zenType.caption} font-bold uppercase tracking-wider ${textSecondary} flex items-center gap-1.5`}>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    {t.lblInboundRx}
-                  </div>
-                  <div className="space-y-2 pt-1">
-                    <div className="flex justify-between items-baseline">
-                      <span className={`${textMuted} ${zenType.caption} uppercase font-bold tracking-wider`}>{t.lblCurrentSpeed}</span>
-                      <span className={`font-black text-xs ${textPrimary}`}>{formatSpeed(node.netSpeedIn)}</span>
-                    </div>
-                    <div className="flex justify-between items-baseline">
-                      <span className={`${textMuted} ${zenType.caption} uppercase font-bold tracking-wider`}>{t.lblDownloaded}</span>
-                      <span className={`font-bold ${textPrimary}`}>{formatTrafficGb(node.bandwidthUsedIn)}</span>
-                    </div>
-                  </div>
+                  {renderProgressBar(diskPercent, "bg-amber-500/80")}
                 </div>
 
-                {/* TX Block */}
-                <div className="space-y-3">
-                  <div className={`${zenType.caption} font-bold uppercase tracking-wider ${textSecondary} flex items-center gap-1.5`}>
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                    {t.lblOutboundTx}
+                {/* Network RX/TX */}
+                <div className="pt-2">
+                  <div className={`flex items-center gap-2 ${zenType.data} ${textSecondary} mb-3 tracking-wider font-mono uppercase`}>
+                    <span className="font-bold shrink-0">{t.lblNetworkSpeedRxTx}</span>
+                    <span className="h-px flex-1 bg-zen-line" aria-hidden />
                   </div>
-                  <div className="space-y-2 pt-1">
-                    <div className="flex justify-between items-baseline">
-                      <span className={`${textMuted} ${zenType.caption} uppercase font-bold tracking-wider`}>{t.lblCurrentSpeed}</span>
-                      <span className={`font-black text-xs ${textPrimary}`}>{formatSpeed(node.netSpeedOut)}</span>
+                  <div className={`grid grid-cols-1 min-[420px]:grid-cols-2 gap-x-4 gap-y-3 ${zenType.data} font-mono`}>
+                    {/* Left: current in/out speeds */}
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2">
+                        <span className={`inline-flex items-center gap-1.5 min-w-0 whitespace-nowrap ${textMuted} uppercase font-bold tracking-wider`}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                          {t.lblInboundRxShort}
+                        </span>
+                        <span className={`font-black ${textPrimary} whitespace-nowrap shrink-0 tabular-nums`}>
+                          {formatSpeed(node.netSpeedIn)}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2">
+                        <span className={`inline-flex items-center gap-1.5 min-w-0 whitespace-nowrap ${textMuted} uppercase font-bold tracking-wider`}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shrink-0" />
+                          {t.lblOutboundTxShort}
+                        </span>
+                        <span className={`font-black ${textPrimary} whitespace-nowrap shrink-0 tabular-nums`}>
+                          {formatSpeed(node.netSpeedOut)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-baseline">
-                      <span className={`${textMuted} ${zenType.caption} uppercase font-bold tracking-wider`}>{t.lblUploaded}</span>
-                      <span className={`font-bold ${textPrimary}`}>{formatTrafficGb(node.bandwidthUsedOut)}</span>
+                    {/* Right: cumulative traffic */}
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2">
+                        <span className={`${textMuted} uppercase font-bold tracking-wider whitespace-nowrap`}>
+                          {t.lblDownloaded}
+                        </span>
+                        <span className={`font-bold ${textPrimary} whitespace-nowrap shrink-0 tabular-nums`}>
+                          {formatTrafficGb(node.bandwidthUsedIn)}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2">
+                        <span className={`${textMuted} uppercase font-bold tracking-wider whitespace-nowrap`}>
+                          {t.lblUploaded}
+                        </span>
+                        <span className={`font-bold ${textPrimary} whitespace-nowrap shrink-0 tabular-nums`}>
+                          {formatTrafficGb(node.bandwidthUsedOut)}
+                        </span>
+                      </div>
                     </div>
                   </div>
+                  {node.bandwidthTotal > 0 && (
+                    <div className={`flex justify-between items-baseline pt-3 mt-3 border-t border-neutral-500/10 ${zenType.caption} font-mono`}>
+                      <span className={`${textMuted} uppercase font-bold tracking-wider`}>
+                        {getTrafficTypeLabel(node.trafficLimitType, {
+                          sum: t.trafficTypeSum,
+                          max: t.trafficTypeMax,
+                          min: t.trafficTypeMin,
+                          up: t.trafficTypeUp,
+                          down: t.trafficTypeDown,
+                        })}
+                      </span>
+                      <span className={`font-bold ${textPrimary}`}>{formatNodeTraffic(node)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
-              {node.bandwidthTotal > 0 && (
-                <div className={`flex justify-between items-baseline pt-2 mt-1 border-t border-neutral-500/10 ${zenType.caption} font-mono`}>
-                  <span className={`${textMuted} uppercase font-bold tracking-wider`}>
-                    {getTrafficTypeLabel(node.trafficLimitType, {
-                      sum: t.trafficTypeSum,
-                      max: t.trafficTypeMax,
-                      min: t.trafficTypeMin,
-                      up: t.trafficTypeUp,
-                      down: t.trafficTypeDown,
-                    })}
-                  </span>
-                  <span className={`font-bold ${textPrimary}`}>{formatNodeTraffic(node)}</span>
-                </div>
-              )}
             </div>
           </div>
 
@@ -859,14 +1046,14 @@ export function NodeDetail({
           <div className="space-y-6 pt-6">
             <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3">
               <div className="flex justify-center md:justify-start min-w-0">
-                <span className={`font-bold ${zenType.section} zen-track-tight uppercase ${textSecondary} font-mono`}>
+                <span className={`font-extrabold ${zenType.body} zen-track-tight uppercase ${textSecondary} font-mono`}>
                   {subSection === "metrics"
                     ? t.sectionResourceMonitoring
                     : t.sectionLatencyDetect}
                 </span>
               </div>
 
-              <div className={`flex flex-wrap items-center justify-center gap-2 ${zenType.caption} select-none shrink-0`}>
+              <div className={`flex flex-wrap items-center justify-center gap-2 ${zenType.data} select-none shrink-0`}>
                 <button
                   type="button"
                   onClick={() => setSubSection("metrics")}

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { VPSNode } from "../types";
 import { translations, Lang, formatMsg } from "../lib/i18n";
 import { formatKbps, formatNodeTraffic, getTrafficTypeLabel } from "@/lib/formatUnits";
@@ -20,7 +20,8 @@ import { Flag } from "@/components/Flag";
 import { OsIcon } from "@/components/OsIcon";
 import { NodeTags } from "@/components/NodeTags";
 import { PublicRemarkButton } from "@/components/PublicRemarkButton";
-import { zenType } from "@/lib/typography";
+import { LatencyHistoryBlocks } from "@/components/LatencyHistoryBlocks";
+import { zenType, zenTouch } from "@/lib/typography";
 
 interface NodeTableProps {
   nodes: VPSNode[];
@@ -102,8 +103,15 @@ export function NodeTable({
     defaultViewMode,
     defaultSortField,
     defaultSortOrder,
+    showLatency,
+    latencyColorConfig,
   } = useThemeSettings();
-  const initialSortField = SORT_FIELD_MAP[defaultSortField] ?? "default";
+  const { recordEnabled } = useRecordSettings();
+  const latencyVisible = recordEnabled && showLatency;
+
+  const mappedDefaultSort = SORT_FIELD_MAP[defaultSortField] ?? "default";
+  const initialSortField: SortField =
+    mappedDefaultSort === "latency" && !latencyVisible ? "default" : mappedDefaultSort;
   const initialSortOrder: SortOrder =
     defaultSortOrder === "Descending" ? "desc" : "asc";
 
@@ -113,9 +121,9 @@ export function NodeTable({
   const [sortOrder, setSortOrder] = useState<SortOrder>(initialSortOrder);
   const [isSortMenuOpen, setIsSortMenuOpen] = useState<boolean>(false);
   const userSortedRef = React.useRef(false);
+  const groupScrollRef = useRef<HTMLDivElement>(null);
 
   const { viewMode, effectiveViewMode, setViewMode } = useViewMode(defaultViewMode);
-  const { recordEnabled } = useRecordSettings();
 
   // Apply admin-configured default until the user manually changes the sort.
   React.useEffect(() => {
@@ -125,10 +133,10 @@ export function NodeTable({
   }, [initialSortField, initialSortOrder]);
 
   React.useEffect(() => {
-    if (!recordEnabled && sortField === "latency") {
+    if (!latencyVisible && sortField === "latency") {
       setSortField("default");
     }
-  }, [recordEnabled, sortField]);
+  }, [latencyVisible, sortField]);
 
   const getFieldLabel = (field: SortField) => {
     switch (field) {
@@ -161,7 +169,7 @@ export function NodeTable({
     { value: "cpu", label: t.cpu },
     { value: "mem", label: t.mem },
     { value: "disk", label: t.disk },
-    ...(recordEnabled ? [{ value: "latency" as SortField, label: t.ping }] : []),
+    ...(latencyVisible ? [{ value: "latency" as SortField, label: t.ping }] : []),
     ...(showExpiryTime ? [{ value: "days" as SortField, label: t.expiry }] : []),
     { value: "os", label: t.os },
     { value: "status", label: t.status },
@@ -246,6 +254,13 @@ export function NodeTable({
       setActiveGroup(ALL_NODE_GROUP);
     }
   }, [activeGroup, nodeGroups]);
+
+  useEffect(() => {
+    const scroller = groupScrollRef.current;
+    if (!scroller) return;
+    const activeChip = scroller.querySelector<HTMLElement>("[data-group-active='true']");
+    activeChip?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+  }, [activeGroup, nodeGroups.length]);
 
   useEffect(() => {
     if (!showExpiryTime && sortField === "days") {
@@ -333,7 +348,7 @@ export function NodeTable({
   }, [filteredNodes, sortField, sortOrder, billingLabels]);
 
   const listColSpan =
-    (recordEnabled ? 1 : 0) +
+    (latencyVisible ? 1 : 0) +
     (showExpiryTime ? 1 : 0) +
     7;
 
@@ -347,185 +362,324 @@ export function NodeTable({
     }
   };
 
+  const getSortOrderIcon = (order: SortOrder) => (order === "asc" ? "▲" : "▼");
+
   const getSortIndicator = (field: SortField) => {
     if (sortField !== field) return " ·";
-    return sortOrder === "asc" ? " ▲" : " ▼";
+    return ` ${getSortOrderIcon(sortOrder)}`;
   };
 
   // Styling helpers
   const textPrimary = theme === "dark" ? "text-neutral-300" : "text-neutral-700";
-  const textMuted = theme === "dark" ? "text-neutral-500" : "text-neutral-500";
+  const textMuted = theme === "dark" ? "text-neutral-400 font-medium" : "text-neutral-600 font-medium";
   const borderBottomClass = "border-zen-line-strong";
+  const toolbarPanelClass =
+    theme === "dark"
+      ? "border-neutral-700/55 bg-zen-elevate/15"
+      : "border-zen-line-strong bg-zen-elevate/20";
+  const groupChipIdle =
+    theme === "dark"
+      ? "border border-neutral-600/90 text-neutral-400 hover:border-neutral-500 hover:text-neutral-200"
+      : "border border-neutral-400/90 text-neutral-500 hover:border-neutral-500 hover:text-neutral-700";
+  const groupChipActive =
+    theme === "dark"
+      ? "border border-neutral-600 bg-neutral-700 text-neutral-100 shadow-sm"
+      : "border border-neutral-700 bg-neutral-800 text-neutral-50 shadow-sm";
+  const segmentTrackClass =
+    theme === "dark"
+      ? "border border-neutral-600/90 bg-neutral-900/50"
+      : "border border-neutral-400/85 bg-neutral-200/45";
+  const segmentActiveClass =
+    theme === "dark"
+      ? "bg-neutral-700 text-neutral-100 shadow-sm"
+      : "bg-zen-surface text-neutral-800 shadow-sm";
+
+  const renderGroupChip = (label: string, value: string, isActive: boolean) => (
+    <button
+      type="button"
+      data-group-active={isActive ? "true" : undefined}
+      onClick={() => setActiveGroup(value)}
+      className={`shrink-0 snap-start cursor-pointer rounded-full px-3.5 py-1.5 font-mono ${zenType.caption} zen-track-tight transition-colors ${
+        isActive ? `${groupChipActive} font-black` : `${groupChipIdle} font-bold`
+      }`}
+    >
+      {label}
+    </button>
+  );
+
+  const renderGroupTextTab = (label: string, value: string, isActive: boolean) => (
+    <button
+      type="button"
+      onClick={() => setActiveGroup(value)}
+      className={`cursor-pointer font-sans ${zenType.caption} zen-track-tight transition-all ${
+        isActive ? `${textPrimary} font-black` : `${textMuted} hover:text-emerald-500`
+      }`}
+    >
+      {label}
+    </button>
+  );
+
+  const renderDesktopGroupTabs = () => {
+    const items: React.ReactNode[] = [
+      renderGroupTextTab(allGroupsLabel(lang), ALL_NODE_GROUP, activeGroup === ALL_NODE_GROUP),
+    ];
+    for (const group of nodeGroups) {
+      items.push(
+        <span
+          key={`sep-${group}`}
+          className={`select-none font-mono font-light ${zenType.caption} ${
+            theme === "dark" ? "text-neutral-600" : "text-neutral-400/70"
+          }`}
+          aria-hidden
+        >
+          {" / "}
+        </span>,
+      );
+      items.push(
+        <React.Fragment key={group}>
+          {renderGroupTextTab(group, group, activeGroup === group)}
+        </React.Fragment>,
+      );
+    }
+    return (
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-2 min-w-0">{items}</div>
+    );
+  };
+
+  const renderStatsBar = (mobileFooter: boolean) => (
+    <div
+      className={`${zenType.label} tracking-[0.2em] ${textMuted} flex flex-wrap justify-between items-center gap-x-4 gap-y-2 uppercase font-mono ${
+        mobileFooter ? "pt-3 border-t border-zen-line-strong" : "sm:items-baseline tracking-[0.25em]"
+      }`}
+    >
+      <span>
+        {t.matchingInstances}: {sortedNodes.length} / {nodes.length}
+      </span>
+      <div className="flex items-center gap-2 relative z-30">
+        <span>{t.sort}:</span>
+        <div className="relative inline-block text-left">
+          <button
+            type="button"
+            onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
+            className={`cursor-pointer select-none font-bold flex items-center gap-1 uppercase leading-none ${textPrimary}`}
+          >
+            {getFieldLabel(sortField)}
+            {sortField !== "default" ? (
+              <span
+                className="normal-case tracking-normal opacity-75"
+                aria-label={sortOrder === "asc" ? t.sortAsc : t.sortDesc}
+              >
+                {getSortOrderIcon(sortOrder)}
+              </span>
+            ) : null}
+          </button>
+          {isSortMenuOpen && (
+            <>
+              <div className="fixed inset-0 z-40 cursor-default" onClick={() => setIsSortMenuOpen(false)} />
+              <div className={`absolute right-0 top-full z-50 w-44 border overflow-hidden ${
+                theme === "dark"
+                  ? "bg-zen-bg border-neutral-800 text-neutral-300"
+                  : "bg-zen-bg border-neutral-200 text-neutral-700"
+              }`}>
+                <div className={`px-2.5 py-1.5 border-b ${zenType.micro} zen-track-tight font-bold ${
+                  theme === "dark" ? "border-neutral-800 text-neutral-500" : "border-neutral-100 text-neutral-400"
+                }`}>
+                  {t.selectSortMetric}
+                </div>
+                <div className="py-1">
+                  {sortOptions.map((opt) => {
+                    const isCurrent = sortField === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        onClick={() => {
+                          userSortedRef.current = true;
+                          if (opt.value === "default") {
+                            setSortField("default");
+                          } else if (isCurrent) {
+                            setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                          } else {
+                            setSortField(opt.value);
+                            setSortOrder("desc");
+                          }
+                          setIsSortMenuOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 md:py-1.5 ${zenType.caption} tracking-wider uppercase font-mono transition-colors flex items-center justify-between ${
+                          isCurrent
+                            ? "bg-neutral-500/12 text-emerald-600 dark:text-emerald-400 font-bold"
+                            : "hover:bg-neutral-500/10"
+                        }`}
+                      >
+                        <span>{opt.label}</span>
+                        {isCurrent && opt.value !== "default" && (
+                          <span className={`text-emerald-500 ${zenType.micro}`}>
+                            {getSortOrderIcon(sortOrder)}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="border-t p-1 border-neutral-500/15">
+                  <button
+                    onClick={() => {
+                      userSortedRef.current = true;
+                      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                      setIsSortMenuOpen(false);
+                    }}
+                    aria-label={sortOrder === "asc" ? t.setSortDescending : t.setSortAscending}
+                    className={`w-full text-center px-1 py-1 ${zenType.caption} uppercase font-bold tracking-widest text-[#10b981] hover:underline transition-all`}
+                  >
+                    [ {getSortOrderIcon(sortOrder === "asc" ? "desc" : "asc")} ]
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderViewModeButton = (mode: "list" | "card", label: string) => {
+    const isActive = viewMode === mode;
+    return (
+      <button
+        type="button"
+        onClick={() => setViewMode(mode)}
+        className={`${zenTouch.btn} cursor-pointer rounded-full px-3.5 py-1 font-mono ${zenType.caption} zen-track-tight transition-colors ${
+          isActive ? `${segmentActiveClass} font-black` : `${textMuted} font-bold hover:text-emerald-600 dark:hover:text-emerald-400`
+        }`}
+      >
+        {label}
+      </button>
+    );
+  };
 
   return (
-    <div className={`space-y-8 font-sans ${zenType.body} ${theme === "dark" ? "text-neutral-300" : "text-neutral-700"}`}>
-      {/* Tab Filter, Search, and View Mode switch row */}
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-baseline justify-between py-2">
-        {/* Category switcher tabs — groups from API node.group */}
+    <div className={`w-full space-y-6 lg:space-y-8 font-sans ${zenType.body} ${theme === "dark" ? "text-neutral-300" : "text-neutral-700"}`}>
+      {/* Mobile toolbar card */}
+      <div
+        className={`space-y-4 lg:hidden rounded-xl border p-4 ${toolbarPanelClass}`}
+      >
         {showGroupTabs ? (
-          <div className="flex flex-wrap gap-x-6 gap-y-2">
-            <button
-              onClick={() => setActiveGroup(ALL_NODE_GROUP)}
-              className={`cursor-pointer font-sans ${zenType.caption} zen-track-tight uppercase transition-all ${
-                activeGroup === ALL_NODE_GROUP
-                  ? `${textPrimary} font-black`
-                  : `${textMuted} hover:text-emerald-500`
-              }`}
+          <div className="relative min-w-0">
+            <div
+              className={`pointer-events-none absolute inset-y-0 left-0 z-[1] w-3 bg-gradient-to-r ${
+                theme === "dark" ? "from-zen-bg/95" : "from-zen-bg/90"
+              } to-transparent`}
+              aria-hidden
+            />
+            <div
+              className={`pointer-events-none absolute inset-y-0 right-0 z-[1] w-5 bg-gradient-to-l ${
+                theme === "dark" ? "from-zen-bg/95" : "from-zen-bg/90"
+              } to-transparent`}
+              aria-hidden
+            />
+            <div
+              ref={groupScrollRef}
+              className="overflow-x-auto overscroll-x-contain scroll-smooth snap-x snap-mandatory touch-pan-x [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
-              {allGroupsLabel(lang)}
-            </button>
-            {nodeGroups.map((group) => {
-              const isActive = activeGroup === group;
-              return (
-                <button
-                  key={group}
-                  onClick={() => setActiveGroup(group)}
-                  className={`cursor-pointer font-sans ${zenType.caption} zen-track-tight uppercase transition-all ${
-                    isActive
-                      ? `${textPrimary} font-black`
-                      : `${textMuted} hover:text-emerald-500`
-                  }`}
-                >
-                  {group}
-                </button>
-              );
-            })}
+              <div className="flex w-max gap-2 py-0.5 pr-3">
+                {renderGroupChip(allGroupsLabel(lang), ALL_NODE_GROUP, activeGroup === ALL_NODE_GROUP)}
+                {nodeGroups.map((group) => renderGroupChip(group, group, activeGroup === group))}
+              </div>
+            </div>
           </div>
-        ) : (
-          <div />
-        )}
+        ) : null}
 
-        {/* View Mode Switching & Search wrapper */}
-        <div className="flex flex-wrap items-center gap-x-8 gap-y-4 font-mono">
-          {/* View Mode Switches */}
-          <div className={`flex items-center gap-3 ${zenType.caption} tracking-[0.2em] uppercase`}>
-            <span className={`${textMuted} shrink-0 leading-none`}>{t.viewMode}:</span>
-            <button
-              type="button"
-              onClick={() => setViewMode("list")}
-              className={`inline-flex items-center leading-none cursor-pointer py-0 transition-colors ${
-                viewMode === "list" ? `${textPrimary} font-bold` : `${textMuted} hover:text-[#10b981]`
-              }`}
-            >
-              [ {t.list} ]
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("card")}
-              className={`inline-flex items-center leading-none cursor-pointer py-0 transition-colors ${
-                viewMode === "card" ? `${textPrimary} font-bold` : `${textMuted} hover:text-[#10b981]`
-              }`}
-            >
-              [ {t.card} ]
-            </button>
+        <div className="flex flex-col gap-3 font-mono">
+          <div className="flex items-center justify-between gap-3">
+            <span className={`${zenType.label} ${textMuted} shrink-0 tracking-[0.18em] uppercase`}>
+              {t.viewMode}
+            </span>
+            <div className={`inline-flex rounded-full p-0.5 ${segmentTrackClass}`}>
+              {renderViewModeButton("list", t.list)}
+              {renderViewModeButton("card", t.card)}
+            </div>
           </div>
-
-          {/* Search bar input */}
-          <div className="flex items-center gap-2">
-            <span className={`${zenType.label} ${textMuted} shrink-0 leading-none tracking-[0.2em] uppercase`}>{t.search}:</span>
+          <div className="relative flex min-w-0 items-center">
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="..."
-              className={`border-b ${borderBottomClass} bg-transparent py-2 md:py-1 px-1 outline-none transition-all font-mono ${zenType.body} placeholder-neutral-550 tracking-wider w-40 uppercase ${textPrimary}`}
+              placeholder={t.search}
+              aria-label={t.search}
+              className={`w-full min-w-0 rounded-md border border-zen-line-strong bg-zen-elevate/15 px-3 py-2 outline-none transition-all font-mono ${zenType.body} tracking-wide uppercase ${textPrimary} placeholder:text-neutral-400/60`}
             />
-            {searchTerm && (
+            {searchTerm ? (
               <button
+                type="button"
                 onClick={() => setSearchTerm("")}
-                className={`text-neutral-400 hover:text-red-400 font-mono ${zenType.caption} cursor-pointer`}
+                className={`absolute right-2 text-neutral-400 hover:text-red-400 font-mono ${zenType.caption} cursor-pointer`}
+                aria-label="Clear"
               >
                 [X]
               </button>
-            )}
+            ) : null}
           </div>
         </div>
+
+        {renderStatsBar(true)}
       </div>
 
-      {/* Nodes Counter Info */}
-      <div className={`${zenType.label} tracking-[0.25em] ${textMuted} flex flex-wrap justify-between items-center sm:items-baseline gap-y-2 uppercase font-mono`}>
-        <span>
-          {t.matchingInstances}: {sortedNodes.length} / {nodes.length}
-        </span>
-        <div className="flex items-center gap-2 relative z-30">
-          <span>{t.sort}:</span>
-          <div className="relative inline-block text-left">
-            <button
-              onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
-              className={`cursor-pointer select-none bg-transparent hover:text-emerald-500 font-bold border-b border-dashed ${theme === "dark" ? "border-neutral-800" : "border-neutral-300"} pb-0.5 flex items-center gap-1 uppercase transition-colors`}
-            >
-              {getFieldLabel(sortField)}
-              {sortField !== "default"
-                ? ` (${sortOrder === "asc" ? t.sortAsc : t.sortDesc})`
-                : ""}
-            </button>
-            {isSortMenuOpen && (
-              <>
-                {/* Backdrop to close click */}
-                <div className="fixed inset-0 z-40 cursor-default" onClick={() => setIsSortMenuOpen(false)} />
-                {/* Dropdown Options */}
-                <div className={`absolute right-0 mt-2 w-44 z-50 border rounded-sm shadow-md overflow-hidden ${
-                  theme === "dark" 
-                    ? "bg-zen-surface border-neutral-800 text-neutral-300" 
-                    : "bg-zen-surface border-neutral-200 text-neutral-700"
-                }`}>
-                  <div className={`px-2.5 py-1.5 border-b ${zenType.micro} zen-track-tight font-bold ${
-                    theme === "dark" ? "border-neutral-800 text-neutral-500" : "border-neutral-100 text-neutral-400"
-                  }`}>
-                    {t.selectSortMetric}
-                  </div>
-                  <div className="py-1">
-                    {sortOptions.map((opt) => {
-                      const isCurrent = sortField === opt.value;
-                      return (
-                        <button
-                          key={opt.value}
-                          onClick={() => {
-                            userSortedRef.current = true;
-                            if (opt.value === "default") {
-                              setSortField("default");
-                            } else if (isCurrent) {
-                              setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-                            } else {
-                              setSortField(opt.value);
-                              setSortOrder("desc"); // Default to desc for performance trends
-                            }
-                            setIsSortMenuOpen(false);
-                          }}
-                          className={`w-full text-left px-3 py-2 md:py-1.5 ${zenType.caption} tracking-wider uppercase font-mono transition-colors flex items-center justify-between ${
-                            isCurrent
-                              ? "bg-neutral-500/12 text-emerald-600 dark:text-emerald-400 font-bold"
-                              : "hover:bg-neutral-500/10"
-                          }`}
-                        >
-                          <span>{opt.label}</span>
-                          {isCurrent && opt.value !== "default" && (
-                            <span className={`text-emerald-500 ${zenType.micro}`}>
-                              {sortOrder === "asc" ? "▲" : "▼"}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {/* Footer toggle button */}
-                  <div className="border-t p-1 border-neutral-500/15">
-                    <button
-                      onClick={() => {
-                        userSortedRef.current = true;
-                        setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-                        setIsSortMenuOpen(false);
-                      }}
-                      className={`w-full text-center px-1 py-1 text-[8.5px] uppercase font-bold tracking-widest text-[#10b981] hover:underline transition-all`}
-                    >
-                      [ {sortOrder === "asc" ? t.setSortDescending : t.setSortAscending} ]
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
+      {/* Desktop toolbar — original layout */}
+      <div className="hidden lg:flex flex-col gap-8">
+        <div className="flex flex-row items-baseline justify-between py-2">
+          {showGroupTabs ? renderDesktopGroupTabs() : <div />}
+
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-4 font-mono">
+            <div className={`flex items-center gap-3 ${zenType.caption} tracking-[0.2em] uppercase`}>
+              <span className={`${textMuted} shrink-0 leading-none`}>{t.viewMode}:</span>
+              <button
+                type="button"
+                onClick={() => setViewMode("list")}
+                className={`inline-flex items-center leading-none cursor-pointer py-0 transition-colors ${
+                  viewMode === "list" ? `${textPrimary} font-bold` : `${textMuted} hover:text-[#10b981]`
+                }`}
+              >
+                [ {t.list} ]
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("card")}
+                className={`inline-flex items-center leading-none cursor-pointer py-0 transition-colors ${
+                  viewMode === "card" ? `${textPrimary} font-bold` : `${textMuted} hover:text-[#10b981]`
+                }`}
+              >
+                [ {t.card} ]
+              </button>
+            </div>
+
+            <div className="flex items-baseline gap-2">
+              <span className={`${zenType.label} ${textMuted} shrink-0 leading-none tracking-[0.2em] uppercase`}>
+                {t.search}:
+              </span>
+              <div
+                className={`inline-flex items-center gap-1 border-b ${borderBottomClass}`}
+              >
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="..."
+                  className={`min-w-0 w-40 border-0 bg-transparent py-1 pl-1 pr-0 outline-none transition-all font-mono ${zenType.body} placeholder-neutral-550 tracking-wider uppercase ${textPrimary}`}
+                />
+                {searchTerm ? (
+                  <button
+                    type="button"
+                    onClick={() => setSearchTerm("")}
+                    className={`shrink-0 py-1 leading-none text-neutral-400 hover:text-red-400 font-mono ${zenType.caption} cursor-pointer`}
+                  >
+                    [X]
+                  </button>
+                ) : null}
+              </div>
+            </div>
           </div>
         </div>
+
+        {renderStatsBar(false)}
       </div>
 
       {/* VIEW STATE 1: HIGH-DENSITY BULLET-ALIGNED LIST VIEW */}
@@ -549,7 +703,7 @@ export function NodeTable({
                 <th className="py-4 px-2 font-black cursor-pointer hover:text-[#10b981] whitespace-nowrap" onClick={() => handleSort("disk")}>
                   {t.diskspace} {getSortIndicator("disk")}
                 </th>
-                {recordEnabled && (
+                {latencyVisible && (
                 <th className="py-4 px-2 font-black cursor-pointer hover:text-[#10b981] whitespace-nowrap" onClick={() => handleSort("latency")}>
                   {t.ping} {getSortIndicator("latency")}
                 </th>
@@ -713,15 +867,16 @@ export function NodeTable({
                       </td>
 
                       {/* Ping Latency */}
-                      {recordEnabled && (
+                      {latencyVisible && (
                       <td className="py-3 px-2">
                         {node.online && node.latency > 0 ? (
-                          <span className={`font-bold ${textPrimary}`}>
-                            {node.latency >= 100
-                              ? node.latency.toFixed(0)
-                              : node.latency.toFixed(1)}
-                            ms
-                          </span>
+                          <LatencyHistoryBlocks
+                            samples={node.latencyHistory}
+                            currentMs={node.latency}
+                            theme={theme}
+                            textPrimary={textPrimary}
+                            colorConfig={latencyColorConfig}
+                          />
                         ) : (
                           <span className={textMuted}>—</span>
                         )}
@@ -731,8 +886,9 @@ export function NodeTable({
                       {/* Bandwidth Speed */}
                       <td className="py-3 px-2">
                         {node.online ? (
-                          <span className={`font-bold ${textPrimary}`}>
-                            ↓{formatSpeed(node.netSpeedIn)} ↑{formatSpeed(node.netSpeedOut)}
+                          <span className={`inline-flex items-baseline gap-x-2 font-bold ${textPrimary}`}>
+                            <span>↓ {formatSpeed(node.netSpeedIn)}</span>
+                            <span>↑ {formatSpeed(node.netSpeedOut)}</span>
                           </span>
                         ) : (
                           "---"
@@ -764,7 +920,7 @@ export function NodeTable({
         </div>
       ) : (
         /* VIEW STATE 2: CARD GRID VIEW (Fully localized with zero mixed layouts) */
-        <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-4 pt-4">
+        <div className="grid grid-cols-1 items-start gap-4 pt-4 @min-[640px]:grid-cols-2 @min-[901px]:grid-cols-3 @min-[1300px]:grid-cols-4 @min-[1600px]:grid-cols-5">
           {sortedNodes.length === 0 ? (
             <div className={`col-span-full py-16 text-center ${textMuted} italic uppercase tracking-[0.2em] font-sans`}>
               {t.noInstances}
@@ -823,7 +979,7 @@ export function NodeTable({
                   <div className="flex items-center gap-2 min-w-0">
                     <Flag flag={node.flag} className="w-5 h-5 shrink-0" />
                     <h4
-                      className={`min-w-0 flex-1 truncate font-sans ${zenType.body} font-bold uppercase tracking-tight ${textPrimary}`}
+                      className={`min-w-0 flex-1 truncate font-sans ${zenType.body} font-bold tracking-tight ${textPrimary}`}
                       title={node.name}
                     >
                       {node.name}
@@ -909,16 +1065,17 @@ export function NodeTable({
                         <span>---</span>
                       )}
                     </div>
-                    {recordEnabled && (
+                    {latencyVisible && (
                     <div className="flex justify-between">
                       <span>{t.ping}:</span>
                       {node.online && node.latency > 0 ? (
-                        <span className={`font-bold ${textPrimary}`}>
-                          {node.latency >= 100
-                            ? node.latency.toFixed(0)
-                            : node.latency.toFixed(1)}
-                          ms
-                        </span>
+                        <LatencyHistoryBlocks
+                          samples={node.latencyHistory}
+                          currentMs={node.latency}
+                          theme={theme}
+                          textPrimary={textPrimary}
+                          colorConfig={latencyColorConfig}
+                        />
                       ) : (
                         <span>—</span>
                       )}
@@ -927,8 +1084,9 @@ export function NodeTable({
                     <div className="flex justify-between">
                       <span>{t.bandwidth}:</span>
                       {node.online ? (
-                        <span className={`font-bold ${textPrimary}`}>
-                          ↓{formatSpeed(node.netSpeedIn)} ↑{formatSpeed(node.netSpeedOut)}
+                        <span className={`inline-flex items-baseline gap-x-2 font-bold ${textPrimary}`}>
+                          <span>↓ {formatSpeed(node.netSpeedIn)}</span>
+                          <span>↑ {formatSpeed(node.netSpeedOut)}</span>
                         </span>
                       ) : (
                         <span>---</span>

@@ -224,7 +224,7 @@ export function LatencyProbePanel({
       <div className="relative py-4 px-4 -mx-4 flex flex-col space-y-4 bg-transparent overflow-visible">
         <div className="flex flex-wrap justify-between items-center gap-x-2 gap-y-2 select-none w-full">
           <span
-            className={`font-bold tracking-wider uppercase ${zenType.section} ${theme === "dark" ? "text-neutral-400" : "text-neutral-500"} font-mono shrink-0`}
+            className={`font-extrabold tracking-wider uppercase ${zenType.body} ${theme === "dark" ? "text-neutral-300" : "text-neutral-700"} font-mono shrink-0`}
           >
             {t.pingLatencyDetection}
           </span>

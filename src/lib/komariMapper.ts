@@ -1,6 +1,8 @@
 import type { NodeBasicInfo } from "@/contexts/NodeListContext";
 import type { LiveRecord } from "@/types/LiveData";
 import type { VPSNode } from "@/types";
+import type { LatencySample } from "@/lib/latencyDisplay";
+import { LATENCY_HISTORY_LEN } from "@/lib/latencyDisplay";
 import {
   formatLoad,
   formatUptime,
@@ -22,6 +24,7 @@ export type NodeHistoryBuffers = {
   tcpHistory: number[];
   udpHistory: number[];
   processesHistory: number[];
+  latencyHistory: LatencySample[];
 };
 
 export function bytesToGb(bytes: number): number {
@@ -44,6 +47,10 @@ function emptyHistory(): NodeHistoryBuffers {
     tcpHistory: Array(HISTORY_LEN).fill(0),
     udpHistory: Array(HISTORY_LEN).fill(0),
     processesHistory: Array(HISTORY_LEN).fill(0),
+    latencyHistory: Array.from({ length: LATENCY_HISTORY_LEN }, () => ({
+      ms: 0,
+      t: 0,
+    })),
   };
 }
 
@@ -57,7 +64,19 @@ export type HistorySample = {
   tcp: number;
   udp: number;
   processes: number;
+  latency: number;
+  latencyAt: number;
 };
+
+function shiftLatencyHistory(
+  base: LatencySample[],
+  sample: LatencySample,
+): LatencySample[] {
+  const next = [...base.slice(1), sample];
+  return next.length > LATENCY_HISTORY_LEN
+    ? next.slice(-LATENCY_HISTORY_LEN)
+    : next;
+}
 
 export function pushHistory(
   prev: NodeHistoryBuffers | undefined,
@@ -67,6 +86,7 @@ export function pushHistory(
   const base = prev ?? emptyHistory();
   if (!online) {
     const zero = 0;
+    const emptyLatency: LatencySample = { ms: 0, t: sample.latencyAt };
     return {
       cpuHistory: [...base.cpuHistory.slice(1), zero],
       memHistory: [...base.memHistory.slice(1), zero],
@@ -77,8 +97,13 @@ export function pushHistory(
       tcpHistory: [...base.tcpHistory.slice(1), zero],
       udpHistory: [...base.udpHistory.slice(1), zero],
       processesHistory: [...base.processesHistory.slice(1), zero],
+      latencyHistory: shiftLatencyHistory(base.latencyHistory, emptyLatency),
     };
   }
+  const latencyPoint: LatencySample = {
+    ms: sample.latency,
+    t: sample.latencyAt,
+  };
   return {
     cpuHistory: [...base.cpuHistory.slice(1), sample.cpu],
     memHistory: [...base.memHistory.slice(1), sample.memPercent],
@@ -89,6 +114,7 @@ export function pushHistory(
     tcpHistory: [...base.tcpHistory.slice(1), sample.tcp],
     udpHistory: [...base.udpHistory.slice(1), sample.udp],
     processesHistory: [...base.processesHistory.slice(1), sample.processes],
+    latencyHistory: shiftLatencyHistory(base.latencyHistory, latencyPoint),
   };
 }
 
@@ -124,6 +150,15 @@ export function mapKomariNodeToVps(
     flag: node.region || "🌐",
     os: node.os,
     arch: node.arch,
+    virtualization: node.virtualization,
+    kernelVersion: node.kernel_version,
+    gpuName: node.gpu_name,
+    clientVersion: node.version,
+    createdAt: node.created_at,
+    updatedAt:
+      online && live?.updated_at != null && live.updated_at !== ""
+        ? live.updated_at
+        : node.updated_at,
     online,
     uptime: online && live ? formatUptime(live.uptime) : "—",
     cpuCores: node.cpu_cores,
@@ -166,6 +201,7 @@ export function mapKomariNodeToVps(
     tcpHistory: history.tcpHistory,
     udpHistory: history.udpHistory,
     processesHistory: history.processesHistory,
+    latencyHistory: history.latencyHistory,
   };
 }
 

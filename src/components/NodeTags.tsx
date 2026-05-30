@@ -15,20 +15,39 @@ import {
 interface NodeTagsProps {
   tags: string;
   theme: "light" | "dark";
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "header";
   /** 最多展示几个，超出折叠为 +N；默认 2 */
   maxVisible?: number;
+  /** Spaced " / " between tags (detail header). */
+  spaced?: boolean;
   className?: string;
 }
 
 const SIZE_CLASS = {
-  sm: "zen-type-caption md:text-[9px] md:tracking-[0.06em]",
-  md: "zen-type-data md:text-[10px] md:tracking-[0.08em]",
+  sm: "zen-type-caption md:tracking-[0.06em]",
+  md: "zen-type-data md:tracking-[0.08em]",
+  header: "text-sm tracking-widest uppercase",
 } as const;
 
 const VIEWPORT_PAD = 8;
 
-function TagSeparator({ theme }: { theme: "light" | "dark" }) {
+function TagSeparator({
+  theme,
+  spaced = false,
+}: {
+  theme: "light" | "dark";
+  spaced?: boolean;
+}) {
+  if (spaced) {
+    return (
+      <span
+        className={`shrink-0 select-none font-mono text-sm font-light leading-none opacity-40 ${getTagSeparatorClass(theme)}`}
+        aria-hidden
+      >
+        /
+      </span>
+    );
+  }
   return (
     <span
       className={`select-none font-mono font-light ${getTagSeparatorClass(theme)}`}
@@ -55,7 +74,7 @@ function TagLabel({
   return (
     <span
       title={text}
-      className={`shrink-0 font-mono font-semibold uppercase leading-none ${sizeClass} ${getTagTextClass(color, index, theme)}`}
+      className={`shrink-0 font-mono font-semibold leading-none ${sizeClass} ${getTagTextClass(color, index, theme)}`}
     >
       {text}
     </span>
@@ -67,17 +86,19 @@ function TagList({
   theme,
   sizeClass,
   startIndex = 0,
+  spaced = false,
 }: {
   items: ParsedNodeTag[];
   theme: "light" | "dark";
   sizeClass: string;
   startIndex?: number;
+  spaced?: boolean;
 }) {
   return (
     <>
       {items.map(({ text, color }, index) => (
         <React.Fragment key={`${startIndex + index}-${text}`}>
-          {index > 0 ? <TagSeparator theme={theme} /> : null}
+          {index > 0 ? <TagSeparator theme={theme} spaced={spaced} /> : null}
           <TagLabel
             text={text}
             color={color}
@@ -126,12 +147,14 @@ function TagOverflow({
   theme,
   sizeClass,
   startIndex,
+  spaced = false,
 }: {
   hidden: ParsedNodeTag[];
   hiddenCount: number;
   theme: "light" | "dark";
   sizeClass: string;
   startIndex: number;
+  spaced?: boolean;
 }) {
   const triggerRef = React.useRef<HTMLSpanElement>(null);
   const panelRef = React.useRef<HTMLDivElement>(null);
@@ -185,7 +208,7 @@ function TagOverflow({
         onFocus={showPanel}
         onBlur={hidePanel}
       >
-        <TagSeparator theme={theme} />
+        <TagSeparator theme={theme} spaced={spaced} />
         <span
           className={`cursor-default font-mono font-semibold uppercase leading-none ${sizeClass} ${getTagOverflowTextClass(theme)} transition-colors`}
         >
@@ -213,6 +236,7 @@ function TagOverflow({
               theme={theme}
               sizeClass={sizeClass}
               startIndex={startIndex}
+              spaced={spaced}
             />
           </div>,
           document.body,
@@ -227,6 +251,7 @@ export const NodeTags = React.memo(
     theme,
     size = "sm",
     maxVisible = 2,
+    spaced = false,
     className = "",
   }: NodeTagsProps) => {
     const parsed = parseNodeTags(tags);
@@ -242,10 +267,17 @@ export const NodeTags = React.memo(
 
     return (
       <div
-        className={`flex min-w-0 flex-row flex-wrap items-center gap-x-1 gap-y-0 ${className}`.trim()}
+        className={`flex min-w-0 flex-row flex-wrap items-center ${
+          spaced ? "gap-x-3 gap-y-1" : "gap-x-1 gap-y-0"
+        } ${className}`.trim()}
         onClick={(e) => e.stopPropagation()}
       >
-        <TagList items={visible} theme={theme} sizeClass={sizeClass} />
+        <TagList
+          items={visible}
+          theme={theme}
+          sizeClass={sizeClass}
+          spaced={spaced}
+        />
         {hiddenCount > 0 ? (
           <TagOverflow
             hidden={hidden}
@@ -253,6 +285,7 @@ export const NodeTags = React.memo(
             theme={theme}
             sizeClass={sizeClass}
             startIndex={limit}
+            spaced={spaced}
           />
         ) : null}
       </div>

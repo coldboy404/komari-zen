@@ -43,6 +43,13 @@ export type Messages = {
   lblCpuThreads: string;
   lblArch: string;
   lblSystemOs: string;
+  lblVirtualization: string;
+  lblGpu: string;
+  lblKernel: string;
+  agentInfo: string;
+  lblKomariVersion: string;
+  lblCreatedAt: string;
+  lblLastUpdated: string;
   lblUptimeSec: string;
   lblCpuLoadUtil: string;
   lblLoadAvg: string;

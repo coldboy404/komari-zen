@@ -3,6 +3,10 @@
  * SPDX-License-Identifier: MIT
  */
 
+import type { LatencySample } from "@/lib/latencyDisplay";
+
+export type { LatencySample };
+
 export interface VPSNode {
   id: string;
   name: string;
@@ -11,6 +15,12 @@ export interface VPSNode {
   flag: string;
   os: string;
   arch: string;
+  virtualization: string;
+  kernelVersion: string;
+  gpuName: string;
+  clientVersion: string;
+  createdAt: string | number;
+  updatedAt: string | number;
   online: boolean;
   uptime: string;
   cpuCores: number;
@@ -30,6 +40,7 @@ export interface VPSNode {
   netSpeedIn: number;  // current KB/s incoming
   netSpeedOut: number; // current KB/s outgoing
   latency: number;     // ping latency in ms
+  latencyHistory: LatencySample[];
   price: number;
   currency: string;
   billingCycle: number;

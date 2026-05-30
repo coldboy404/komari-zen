@@ -9,6 +9,10 @@ import type {
 import { hoursToChartLength } from "@/lib/timeRangePresets";
 import type { VPSNode } from "@/types";
 import { bytesToGb } from "@/lib/komariMapper";
+import {
+  LATENCY_HISTORY_LEN,
+  type LatencySample,
+} from "@/lib/latencyDisplay";
 
 const PING_COLORS = [
   "#3b82f6",
@@ -423,6 +427,28 @@ export function taskPingVolatility(
     if (Number.isFinite(computed)) return computed;
   }
   return null;
+}
+
+/** Last N aggregated ping samples (min latency per time anchor) for card blocks. */
+export function pingRecordsToLatencyHistory(
+  records: PingRecord[],
+  tasks: PingTaskInfo[],
+  maxLen = LATENCY_HISTORY_LEN,
+): LatencySample[] {
+  if (!records.length) return [];
+
+  const { anchors, grouped } = groupPingRecordsByTime(records, tasks);
+  const samples: LatencySample[] = [];
+
+  for (const anchor of anchors) {
+    const values = Object.values(grouped[anchor] ?? {}).filter(
+      (v): v is number => typeof v === "number" && v >= 0,
+    );
+    if (values.length === 0) continue;
+    samples.push({ ms: Math.min(...values), t: anchor });
+  }
+
+  return samples.slice(-maxLen);
 }
 
 export function groupPingRecordsByTime(

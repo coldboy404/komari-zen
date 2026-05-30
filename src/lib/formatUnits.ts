@@ -137,6 +137,34 @@ export function formatStoragePair(usedGb: number, totalGb: number): string {
   return `${formatStorageGb(usedGb)} / ${formatStorageGb(totalGb)}`;
 }
 
+/** Format "used / total with units (percent%)" for cluster resource summaries. */
+export function formatResourceUsageSummary(
+  usedGb: number,
+  totalGb: number,
+  percent: number,
+  options?: { usedDigits?: number; totalDigits?: number; percentDigits?: number },
+): string {
+  const usedDigits = options?.usedDigits ?? 1;
+  const totalDigits = options?.totalDigits ?? 0;
+  const percentDigits = options?.percentDigits ?? 1;
+  const pct = percent.toFixed(percentDigits);
+
+  if (usedGb < 1 && totalGb < 1) {
+    const usedMb = usedGb * 1024;
+    const totalMb = totalGb * 1024;
+    const fmtMb = (mb: number, digits: number) =>
+      digits === 0 ? `${Math.round(mb)} MB` : `${mb.toFixed(digits)} MB`;
+    return `${fmtMb(usedMb, usedDigits)} / ${fmtMb(totalMb, totalDigits)} (${pct}%)`;
+  }
+
+  return `${usedGb.toFixed(usedDigits)} GB / ${totalGb.toFixed(totalDigits)} GB (${pct}%)`;
+}
+
+/** Format "current / total" count ratio. */
+export function formatCountRatio(current: number, total: number): string {
+  return `${current} / ${total}`;
+}
+
 export type TrafficTypeLabels = {
   sum: string;
   max: string;
@@ -162,6 +190,30 @@ export function getTrafficTypeLabel(
     default:
       return labels.sum;
   }
+}
+
+export function formatUpdatedAt(raw: string | number | undefined | null): string {
+  if (raw === undefined || raw === null || raw === "") return "—";
+  const ms =
+    typeof raw === "number"
+      ? raw < 1e12
+        ? raw * 1000
+        : raw
+      : Number(raw);
+  const d =
+    typeof raw === "number" && Number.isFinite(ms)
+      ? new Date(ms)
+      : new Date(raw);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString(undefined, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
 }
 
 export function formatNodeTraffic(

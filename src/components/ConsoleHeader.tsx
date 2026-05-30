@@ -9,7 +9,7 @@ import { VPSNode } from "../types";
 import { translations, Lang, getLangMenuLabel, LANG_MENU_OPTIONS } from "../lib/i18n";
 import { usePublicInfo } from "@/contexts/PublicInfoContext";
 import type { ThemePreference } from "@/hooks/useThemePreference";
-import { formatTrafficGb, resolveTrafficUsedGb } from "@/lib/formatUnits";
+import { formatResourceUsageSummary, formatTrafficGb, resolveTrafficUsedGb } from "@/lib/formatUnits";
 import { zenType, zenTouch } from "@/lib/typography";
 
 function MobileMetricHero({
@@ -42,7 +42,7 @@ function MobileMetricHero({
         </span>
         {suffix ? (
           <span
-            className={`text-[clamp(0.5625rem,2.6vw,0.6875rem)] ${textUnit} shrink-0 font-mono font-medium leading-none`}
+            className={`text-[clamp(0.6875rem,2.6vw,0.8125rem)] ${textUnit} shrink-0 font-mono font-medium leading-none`}
           >
             {suffix}
           </span>
@@ -77,7 +77,7 @@ export function ConsoleHeader({
   const langMenuRef = useRef<HTMLDivElement>(null);
   const t = translations[lang];
   const { publicInfo } = usePublicInfo();
-  const siteName = (publicInfo?.sitename || "Komari").toUpperCase();
+  const siteName = publicInfo?.sitename || "Komari";
   const siteDescription = publicInfo?.description?.trim();
 
   useEffect(() => {
@@ -171,12 +171,15 @@ export function ConsoleHeader({
     speedUnit = "KB/s";
   }
 
-  // Calculate unique location regions
-  const totalRegions = new Set(nodes.map((n) => n.location).filter(Boolean)).size;
+  // Unique geographic regions — node.flag holds the region code (node.region),
+  // whereas node.location is group-first and would miscount.
+  const totalRegions = new Set(
+    nodes.map((n) => n.flag).filter((f) => f && f !== "🌐"),
+  ).size;
 
   // Accent colors according to light/dark themes
   const textPrimary = theme === "dark" ? "text-neutral-300" : "text-neutral-700";
-  const textMuted = theme === "dark" ? "text-neutral-500" : "text-neutral-500";
+  const textMuted = theme === "dark" ? "text-neutral-400 font-medium" : "text-neutral-600 font-medium";
   const textUnit = theme === "dark" ? "text-neutral-400" : "text-neutral-400";
   const btnHoverColor = "hover:text-emerald-500 dark:hover:text-amber-400";
 
@@ -248,7 +251,7 @@ export function ConsoleHeader({
           </div>
 
           {!compact ? (
-            <span className="text-neutral-800 font-bold block select-none">/</span>
+            <span className="text-neutral-800 font-bold block select-none px-1">/</span>
           ) : null}
         </div>
 
@@ -295,9 +298,9 @@ export function ConsoleHeader({
   return (
     <header className={`font-sans ${zenType.body} uppercase select-none`}>
       {/* 1. Responsive Top Bar with absolute vertical alignment (items-center) */}
-      <div className="border-b border-dashed border-neutral-200/60 dark:border-neutral-800/70 pb-8 md:pb-10">
+      <div className={view === "detail" ? "pb-4 md:pb-5 border-b border-zen-line" : "pb-8 md:pb-10"}>
         <div className="md:hidden space-y-1">
-          <h1 className={`text-3xl font-black tracking-tight ${textPrimary} select-none break-words`}>
+          <h1 className={`text-3xl font-black tracking-tight normal-case ${textPrimary} select-none break-words`}>
             {siteName}
           </h1>
           {siteDescription ? (
@@ -314,7 +317,7 @@ export function ConsoleHeader({
             <span className={`${zenType.label} block ${textMuted} mb-1 zen-track-tight`}>
               {t.localTime}
             </span>
-            <span className={`${textPrimary} text-sm font-bold tracking-widest select-all`}>
+            <span className={`${textPrimary} text-base font-bold tracking-widest select-all`}>
               {localTime || t.loading}
             </span>
             {timeZone ? (
@@ -329,7 +332,7 @@ export function ConsoleHeader({
         <div className="hidden md:grid md:grid-cols-3 gap-6 items-center">
         {/* Left: App Logo/Branding (Single Word KOMARI) */}
         <div className="text-left min-w-0">
-          <h1 className={`text-3xl font-black tracking-tight ${textPrimary} select-none break-words`}>
+          <h1 className={`text-3xl font-black tracking-tight normal-case ${textPrimary} select-none break-words`}>
             {siteName}
           </h1>
           {siteDescription ? (
@@ -344,7 +347,7 @@ export function ConsoleHeader({
           <span className={`${zenType.label} block ${textMuted} mb-1 zen-track-tight`}>
             {t.localTime}
           </span>
-          <span className={`${textPrimary} text-sm font-bold tracking-widest select-all`}>
+          <span className={`${textPrimary} text-base font-bold tracking-widest select-all`}>
             {localTime || t.loading}
           </span>
           {timeZone ? (
@@ -367,7 +370,7 @@ export function ConsoleHeader({
             <MobileMetricHero
               label={t.lblClusterNodeStatus}
               value={String(totalOnline)}
-              suffix={`/${totalNodes}`}
+              suffix={` / ${totalNodes}`}
               textMuted={textMuted}
               textPrimary={textPrimary}
               textUnit={textUnit}
@@ -392,20 +395,27 @@ export function ConsoleHeader({
 
           {/* Mobile: detail rows stacked */}
           <div
-            className={`md:hidden pt-4 space-y-1.5 ${zenType.data} font-mono leading-relaxed tracking-wider`}
+            className={`md:hidden pt-4 ${zenType.data} font-mono leading-relaxed tracking-wider divide-y divide-zen-line`}
           >
-            <div className="flex justify-between gap-3 py-0.5">
-              <span className={`${textMuted} shrink-0`}>{t.lblOnlineNodes}:</span>
-              <span className="font-bold text-[#10b981] text-right">{totalOnline}</span>
+            {/* Traffic totals — horizontal row */}
+            <div className="grid grid-cols-3 gap-1.5 pb-3 text-center">
+              <div className="flex flex-col items-center gap-1 min-w-0">
+                <span className={`${textMuted} leading-tight`}>{t.cumulativeBandwidth}</span>
+                <span className={`font-bold ${textPrimary}`}>
+                  {formattedBandwidth} {bandwidthUnit}
+                </span>
+              </div>
+              <div className="flex flex-col items-center gap-1 min-w-0">
+                <span className={`${textMuted} leading-tight`}>{t.lblInboundRxShort || "RX"}</span>
+                <span className={`font-bold ${textPrimary}`}>{formatTrafficGb(totalUsedIn)}</span>
+              </div>
+              <div className="flex flex-col items-center gap-1 min-w-0">
+                <span className={`${textMuted} leading-tight`}>{t.lblOutboundTxShort || "TX"}</span>
+                <span className={`font-bold ${textPrimary}`}>{formatTrafficGb(totalUsedOut)}</span>
+              </div>
             </div>
-            <div className="flex justify-between gap-3 py-0.5">
-              <span className={`${textMuted} shrink-0`}>{t.lblOfflineNodes}:</span>
-              <span
-                className={`font-bold text-right ${totalNodes - totalOnline > 0 ? "text-red-500" : textPrimary}`}
-              >
-                {totalNodes - totalOnline}
-              </span>
-            </div>
+            {/* Overview list */}
+            <div className="space-y-1.5 pt-3">
             <div className="flex justify-between gap-3 py-0.5">
               <span className={`${textMuted} shrink-0`}>{t.lblTotalRegions}:</span>
               <span className={`font-bold text-right ${textPrimary}`}>{totalRegions}</span>
@@ -419,37 +429,36 @@ export function ConsoleHeader({
             <div className="flex justify-between gap-3 py-0.5">
               <span className={`${textMuted} shrink-0`}>{t.lblMemory}:</span>
               <span className={`font-bold text-right ${textPrimary}`}>
-                {totalMemoryUsed.toFixed(1)}/{totalMemory.toFixed(0)} GB ({avgMemoryPercent.toFixed(1)}%)
+                {formatResourceUsageSummary(
+                  totalMemoryUsed,
+                  totalMemory,
+                  avgMemoryPercent,
+                )}
               </span>
             </div>
             <div className="flex justify-between gap-3 py-0.5">
               <span className={`${textMuted} shrink-0`}>{t.lblDisk}:</span>
               <span className={`font-bold text-right ${textPrimary}`}>
-                {totalDiskUsed.toFixed(0)}/{totalDisk.toFixed(0)} GB ({avgDiskPercent.toFixed(1)}%)
+                {formatResourceUsageSummary(
+                  totalDiskUsed,
+                  totalDisk,
+                  avgDiskPercent,
+                  { usedDigits: 0, totalDigits: 0 },
+                )}
               </span>
             </div>
-            <div className="flex justify-between gap-3 py-0.5">
-              <span className={`${textMuted} shrink-0`}>{t.cumulativeBandwidth}:</span>
-              <span className={`font-bold text-right ${textPrimary}`}>
-                {formattedBandwidth} {bandwidthUnit}
-              </span>
-            </div>
-            <div className="flex justify-between gap-3 py-0.5">
-              <span className={`${textMuted} shrink-0`}>{t.lblInboundRxShort || "INBOUND (RX)"}:</span>
-              <span className={`font-bold text-right ${textPrimary}`}>{formatTrafficGb(totalUsedIn)}</span>
-            </div>
-            <div className="flex justify-between gap-3 py-0.5">
-              <span className={`${textMuted} shrink-0`}>{t.lblOutboundTxShort || "OUTBOUND (TX)"}:</span>
-              <span className={`font-bold text-right ${textPrimary}`}>{formatTrafficGb(totalUsedOut)}</span>
             </div>
           </div>
 
           {/* Desktop: three columns with hero + details each */}
-          <div className="hidden md:grid md:grid-cols-3 gap-8 md:gap-16 pt-8 md:pt-10">
+          <div className="hidden md:grid md:grid-cols-3 gap-8 pt-8 md:pt-10">
           {/* Metric 1: Cluster Nodes Status */}
           <div className="flex flex-col justify-start space-y-4">
-            <div className={`${zenType.section} zen-track-tight ${textMuted} font-mono uppercase`}>
-              {t.lblClusterNodeStatus}
+            <div className="flex items-center gap-3">
+              <span className={`${zenType.section} zen-track-tight ${textMuted} font-mono uppercase shrink-0`}>
+                {t.lblClusterNodeStatus}
+              </span>
+              <span className="h-px flex-1 bg-zen-line" aria-hidden />
             </div>
             <div className="space-y-3">
               <div className="h-14 sm:h-16 md:h-20 lg:h-24 flex items-end">
@@ -458,34 +467,20 @@ export function ConsoleHeader({
                     {totalOnline}
                   </span>
                   <span className={`text-xl sm:text-2xl md:text-3xl lg:text-[2.25rem] ${textUnit} font-light font-sans select-none pb-0.5`}>
-                    /{totalNodes}
+                    / {totalNodes}
                   </span>
-                </div>
-              </div>
-              {/* Added clean structured detailed list below counts to cleanly fill empty space */}
-              <div className={`grid grid-cols-1 gap-y-1.5 ${zenType.data} font-mono leading-relaxed tracking-wider`}>
-                <div className="flex justify-between py-0.5">
-                  <span className={textMuted}>{t.lblOnlineNodes}:</span>
-                  <span className="font-bold text-[#10b981]">{totalOnline}</span>
-                </div>
-                <div className="flex justify-between py-0.5">
-                  <span className={textMuted}>{t.lblOfflineNodes}:</span>
-                  <span className={`font-bold ${totalNodes - totalOnline > 0 ? "text-red-500" : textPrimary}`}>
-                    {totalNodes - totalOnline}
-                  </span>
-                </div>
-                <div className="flex justify-between py-0.5">
-                  <span className={textMuted}>{t.lblTotalRegions}:</span>
-                  <span className={`font-bold ${textPrimary}`}>{totalRegions}</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Metric 2: Average CPU usage across online nodes */}
-          <div className="flex flex-col justify-start space-y-4">
-            <div className={`${zenType.section} zen-track-tight ${textMuted} font-mono uppercase`}>
-              {t.lblCpuAvg}
+          <div className="flex flex-col justify-start space-y-4 md:border-l md:border-zen-line md:pl-8 lg:pl-12">
+            <div className="flex items-center gap-3">
+              <span className={`${zenType.section} zen-track-tight ${textMuted} font-mono uppercase shrink-0`}>
+                {t.lblCpuAvg}
+              </span>
+              <span className="h-px flex-1 bg-zen-line" aria-hidden />
             </div>
             <div className="space-y-3">
               <div className="h-14 sm:h-16 md:h-20 lg:h-24 flex items-end">
@@ -498,34 +493,16 @@ export function ConsoleHeader({
                   </span>
                 </div>
               </div>
-              <div className={`grid grid-cols-1 gap-y-1.5 ${zenType.data} font-mono leading-relaxed tracking-wider`}>
-                <div className="flex justify-between py-0.5">
-                  <span className={textMuted}>{t.lblCores}:</span>
-                  <span className={`font-bold ${textPrimary}`}>
-                    {totalCores}{" "}
-                    {t.lblThreads}
-                  </span>
-                </div>
-                <div className="flex justify-between py-0.5">
-                  <span className={textMuted}>{t.lblMemory}:</span>
-                  <span className={`font-bold ${textPrimary}`}>
-                    {totalMemoryUsed.toFixed(1)}/{totalMemory.toFixed(0)} GB ({avgMemoryPercent.toFixed(1)}%)
-                  </span>
-                </div>
-                <div className="flex justify-between py-0.5">
-                  <span className={textMuted}>{t.lblDisk}:</span>
-                  <span className={`font-bold ${textPrimary}`}>
-                    {totalDiskUsed.toFixed(0)}/{totalDisk.toFixed(0)} GB ({avgDiskPercent.toFixed(1)}%)
-                  </span>
-                </div>
-              </div>
             </div>
           </div>
 
           {/* Metric 3: Global Networks & Rates */}
-          <div className="flex flex-col justify-start space-y-4">
-            <div className={`${zenType.section} zen-track-tight ${textMuted} font-mono uppercase`}>
-              {t.lblNetworkThroughput}
+          <div className="flex flex-col justify-start space-y-4 md:border-l md:border-zen-line md:pl-8 lg:pl-12">
+            <div className="flex items-center gap-3">
+              <span className={`${zenType.section} zen-track-tight ${textMuted} font-mono uppercase shrink-0`}>
+                {t.lblNetworkThroughput}
+              </span>
+              <span className="h-px flex-1 bg-zen-line" aria-hidden />
             </div>
             <div className="space-y-3">
               <div className="h-14 sm:h-16 md:h-20 lg:h-24 flex items-end">
@@ -538,22 +515,57 @@ export function ConsoleHeader({
                   </span>
                 </div>
               </div>
-              <div className={`grid grid-cols-1 gap-y-1.5 ${zenType.data} font-mono leading-relaxed tracking-wider`}>
-                <div className="flex justify-between py-0.5">
-                  <span className={textMuted}>{t.cumulativeBandwidth}:</span>
-                  <span className={`font-bold ${textPrimary}`}>{formattedBandwidth} {bandwidthUnit}</span>
-                </div>
-                <div className="flex justify-between py-0.5">
-                  <span className={textMuted}>{t.lblInboundRxShort || "INBOUND (RX)"}:</span>
-                  <span className={`font-bold ${textPrimary}`}>{formatTrafficGb(totalUsedIn)}</span>
-                </div>
-                <div className="flex justify-between py-0.5">
-                  <span className={textMuted}>{t.lblOutboundTxShort || "OUTBOUND (TX)"}:</span>
-                  <span className={`font-bold ${textPrimary}`}>{formatTrafficGb(totalUsedOut)}</span>
-                </div>
-              </div>
             </div>
           </div>
+          </div>
+
+          {/* Unified supplementary stats — aligned matrix below the heroes */}
+          <div className="hidden md:grid md:grid-cols-4 pt-7 mt-1 border-t border-zen-line font-mono [&>*]:border-zen-line [&>*]:px-5 [&>*]:py-3 [&>*:nth-child(4n+1)]:pl-0 [&>*:nth-child(4n)]:pr-0 [&>*:not(:nth-child(4n+1))]:border-l [&>*:nth-child(n+5)]:border-t">
+            <div className="flex flex-col gap-1">
+              <span className={`${zenType.label} zen-track-tight uppercase ${textMuted}`}>{t.lblOfflineNodes}</span>
+              <span className={`${zenType.data} font-bold ${totalNodes - totalOnline > 0 ? "text-red-500" : textPrimary}`}>{totalNodes - totalOnline}</span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className={`${zenType.label} zen-track-tight uppercase ${textMuted}`}>{t.lblTotalRegions}</span>
+              <span className={`${zenType.data} font-bold ${textPrimary}`}>{totalRegions}</span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className={`${zenType.label} zen-track-tight uppercase ${textMuted}`}>{t.lblCores}</span>
+              <span className={`${zenType.data} font-bold ${textPrimary}`}>{totalCores} {t.lblThreads}</span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className={`${zenType.label} zen-track-tight uppercase ${textMuted}`}>{t.lblMemory}</span>
+              <span className={`${zenType.data} font-bold ${textPrimary}`}>
+                {formatResourceUsageSummary(
+                  totalMemoryUsed,
+                  totalMemory,
+                  avgMemoryPercent,
+                )}
+              </span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className={`${zenType.label} zen-track-tight uppercase ${textMuted}`}>{t.lblDisk}</span>
+              <span className={`${zenType.data} font-bold ${textPrimary}`}>
+                {formatResourceUsageSummary(
+                  totalDiskUsed,
+                  totalDisk,
+                  avgDiskPercent,
+                  { usedDigits: 0, totalDigits: 0 },
+                )}
+              </span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className={`${zenType.label} zen-track-tight uppercase ${textMuted}`}>{t.cumulativeBandwidth}</span>
+              <span className={`${zenType.data} font-bold ${textPrimary}`}>{formattedBandwidth} {bandwidthUnit}</span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className={`${zenType.label} zen-track-tight uppercase ${textMuted}`}>{t.lblInboundRxShort || "RX"}</span>
+              <span className={`${zenType.data} font-bold ${textPrimary}`}>{formatTrafficGb(totalUsedIn)}</span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className={`${zenType.label} zen-track-tight uppercase ${textMuted}`}>{t.lblOutboundTxShort || "TX"}</span>
+              <span className={`${zenType.data} font-bold ${textPrimary}`}>{formatTrafficGb(totalUsedOut)}</span>
+            </div>
           </div>
         </>
       )}

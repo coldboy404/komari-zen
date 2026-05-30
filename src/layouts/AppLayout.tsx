@@ -39,7 +39,7 @@ export function AppLayout() {
       <div
         className={`min-h-screen px-4 pt-4 pb-5 sm:px-6 sm:pt-6 sm:pb-6 md:px-12 md:pt-12 md:pb-8 antialiased ${bgClass}`}
       >
-        <div className="max-w-[1600px] mx-auto">
+        <div className="mx-auto w-full max-w-[1600px] @container">
           <DashboardSkeleton theme={theme} />
         </div>
       </div>
@@ -63,9 +63,9 @@ export function AppLayout() {
     <div
       className={`min-h-screen px-4 pt-4 pb-5 sm:px-6 sm:pt-6 sm:pb-6 md:px-12 md:pt-12 md:pb-8 select-none antialiased transition-colors duration-300 ${bgClass}`}
     >
-      <div className="max-w-[1600px] mx-auto">
+      <div className="mx-auto w-full max-w-[1600px] @container">
         <div
-          className={isDetail ? "space-y-6 md:space-y-8" : "space-y-10 md:space-y-16 lg:space-y-20"}
+          className={isDetail ? "space-y-4 md:space-y-5" : "space-y-10 md:space-y-16 lg:space-y-20"}
         >
           <ConsoleHeader
             nodes={nodes}
@@ -77,7 +77,7 @@ export function AppLayout() {
             view={isDetail ? "detail" : "dashboard"}
           />
 
-          <main className={isDetail ? "space-y-6 md:space-y-8" : "space-y-10 md:space-y-16 lg:space-y-20"}>
+          <main className={isDetail ? "space-y-4 md:space-y-5" : "space-y-10 md:space-y-16 lg:space-y-20"}>
             <Outlet context={{ nodes, lang, theme }} />
           </main>
         </div>

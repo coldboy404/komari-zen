@@ -2,7 +2,7 @@
   "name": "Komari Zen",
   "short": "Zen",
   "description": "基于极简主义设计理念的 Komari 主题。",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": "qwer-xyz",
   "url": "https://github.com/qwer-xyz/komari-zen",
   "preview": "preview.png",
@@ -87,6 +87,92 @@
         "help": {
           "en": "Sort direction used with the field above (ignored when the field is 'Default').",
           "zh-CN": "配合上面的排序指标使用的方向；指标为 Default 时忽略。"
+        }
+      },
+      {
+        "name": {
+          "en": "Latency",
+          "zh-CN": "延迟检测"
+        },
+        "type": "title"
+      },
+      {
+        "key": "showLatency",
+        "type": "switch",
+        "name": {
+          "en": "Show latency on cards",
+          "zh-CN": "显示延迟信息"
+        },
+        "default": true,
+        "help": {
+          "en": "Show latency value and colored history blocks in the node list and cards. Requires Komari ping/record to be enabled.",
+          "zh-CN": "在节点列表与卡片中显示延迟数值与色块历史。需在 Komari 后台开启延迟检测与记录。"
+        }
+      },
+      {
+        "key": "latencyColorMode",
+        "type": "select",
+        "name": {
+          "en": "Latency color mode",
+          "zh-CN": "延迟色块分级模式"
+        },
+        "options": "Fixed,MeanDelta",
+        "default": "Fixed",
+        "help": {
+          "en": "Fixed: color by absolute ms thresholds. MeanDelta: color by offset from this node's recent average (Fixed is used as fallback when there are too few samples). Options: Fixed = fixed thresholds; MeanDelta = relative to mean.",
+          "zh-CN": "Fixed：按绝对毫秒阈值着色。MeanDelta：按相对该节点近期均值的偏移量着色（样本不足时回退为 Fixed）。选项含义：Fixed = 固定阈值；MeanDelta = 相对均值偏移。"
+        }
+      },
+      {
+        "key": "latencyFixedGreenMax",
+        "type": "number",
+        "name": {
+          "en": "Fixed mode — green below (ms)",
+          "zh-CN": "固定模式 — 绿色上限 (ms)"
+        },
+        "default": 100,
+        "help": {
+          "en": "In Fixed mode, values below this are green.",
+          "zh-CN": "Fixed 模式下，低于此值的延迟显示为绿色。"
+        }
+      },
+      {
+        "key": "latencyFixedYellowMax",
+        "type": "number",
+        "name": {
+          "en": "Fixed mode — yellow below (ms)",
+          "zh-CN": "固定模式 — 黄色上限 (ms)"
+        },
+        "default": 150,
+        "help": {
+          "en": "In Fixed mode, values from green limit up to (but not including) this are yellow; at or above is red.",
+          "zh-CN": "Fixed 模式下，绿色上限到此值（不含）为黄色，达到或超过为红色。"
+        }
+      },
+      {
+        "key": "latencyMeanGreenDelta",
+        "type": "number",
+        "name": {
+          "en": "MeanDelta — green delta (ms)",
+          "zh-CN": "均值模式 — 绿色偏移上限 (ms)"
+        },
+        "default": 10,
+        "help": {
+          "en": "In MeanDelta mode, offset (ms − mean) at or below this is green.",
+          "zh-CN": "MeanDelta 模式下，偏移量（当前值 − 均值）不超过此值为绿色。"
+        }
+      },
+      {
+        "key": "latencyMeanYellowDelta",
+        "type": "number",
+        "name": {
+          "en": "MeanDelta — yellow delta (ms)",
+          "zh-CN": "均值模式 — 黄色偏移上限 (ms)"
+        },
+        "default": 30,
+        "help": {
+          "en": "In MeanDelta mode, offset above green delta up to this is yellow; above is red.",
+          "zh-CN": "MeanDelta 模式下，超过绿色偏移上限到此值为黄色，超过为红色。"
         }
       },
       {

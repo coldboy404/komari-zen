@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveData } from "@/contexts/LiveDataContext";
 import { useNodeList, type NodeBasicInfo } from "@/contexts/NodeListContext";
 import { useThemeSettings } from "@/hooks/useThemeSettings";
+import { useLatencyCardHistory } from "@/hooks/useLatencyCardHistory";
 import { usePingSummary } from "@/hooks/usePingSummary";
 import { useRecordSettings } from "@/hooks/useRecordSettings";
 import {
@@ -10,6 +11,7 @@ import {
   sortNodesByPolicy,
   type NodeHistoryBuffers,
 } from "@/lib/komariMapper";
+import { mergeLatencyHistory } from "@/lib/latencyDisplay";
 import { aggregateLivePing } from "@/lib/recordTransform";
 import type { LiveRecord } from "@/types/LiveData";
 import type { VPSNode } from "@/types";
@@ -25,6 +27,7 @@ function emptyHistoryBuffers(): NodeHistoryBuffers {
     tcpHistory: Array(20).fill(0),
     udpHistory: Array(20).fill(0),
     processesHistory: Array(20).fill(0),
+    latencyHistory: Array.from({ length: 10 }, () => ({ ms: 0, t: 0 })),
   };
 }
 
@@ -52,6 +55,10 @@ export function useKomariNodes() {
 
   const { summary: pingSummary } = usePingSummary(
     recordEnabled && !liveSupportsPing ? onlineUuids : [],
+  );
+
+  const { history: latencySeedHistory } = useLatencyCardHistory(
+    recordEnabled ? onlineUuids : [],
   );
 
   useEffect(() => {
@@ -88,6 +95,13 @@ export function useKomariNodes() {
         diskPercent = (diskUsed / diskTotalGb) * 100;
       }
 
+      const latencyMs =
+        recordEnabled && online
+          ? liveSupportsPing
+            ? aggregateLivePing(live?.ping)
+            : (pingSummary.get(node.uuid)?.latency ?? 0)
+          : 0;
+
       const next = pushHistory(
         historyRef.current.get(node.uuid),
         {
@@ -100,6 +114,8 @@ export function useKomariNodes() {
           tcp: online ? (live?.connections.tcp ?? 0) : 0,
           udp: online ? (live?.connections.udp ?? 0) : 0,
           processes: online ? (live?.process ?? 0) : 0,
+          latency: latencyMs,
+          latencyAt: Date.now(),
         },
         online,
       );
@@ -111,7 +127,7 @@ export function useKomariNodes() {
     if (changed) {
       setHistoryTick((n) => n + 1);
     }
-  }, [nodeList, live_data]);
+  }, [nodeList, live_data, pingSummary, recordEnabled, liveSupportsPing]);
 
   const nodes = useMemo((): VPSNode[] => {
     if (!nodeList) return [];
@@ -133,7 +149,14 @@ export function useKomariNodes() {
           ? aggregateLivePing(live?.ping)
           : (pingSummary.get(node.uuid)?.latency ?? 0)
         : 0;
-      return mapKomariNodeToVps(node, live, online, history, latency);
+      const vps = mapKomariNodeToVps(node, live, online, history, latency);
+      if (!recordEnabled || !online) return vps;
+
+      const mergedLatency = mergeLatencyHistory(
+        latencySeedHistory.get(node.uuid) ?? [],
+        history.latencyHistory,
+      );
+      return { ...vps, latencyHistory: mergedLatency };
     });
   }, [
     nodeList,
@@ -143,6 +166,7 @@ export function useKomariNodes() {
     pingSummary,
     recordEnabled,
     liveSupportsPing,
+    latencySeedHistory,
   ]);
 
   return {

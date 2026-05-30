@@ -82,9 +82,9 @@ export function formatPricePart(
   if (price === 0) return null;
   const suffix = formatBillingCycleSuffix(billingCycle, labels);
   if (price === -1) {
-    return `(${labels.billingFree}/${suffix})`;
+    return `(${labels.billingFree} / ${suffix})`;
   }
-  return `(${currency}${price}/${suffix})`;
+  return `(${currency}${price} / ${suffix})`;
 }
 
 export type NodeBillingInput = {
