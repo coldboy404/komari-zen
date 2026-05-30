@@ -39,7 +39,7 @@ export default function InstancePage() {
           onClick={() => navigate("/")}
           className={`group font-sans ${zenType.data} font-bold tracking-wider transition-all duration-200 ${zenTouch.btn} px-3.5 rounded-full ${
             theme === "dark"
-              ? "hover:bg-[#1f1f22] text-neutral-400 hover:text-neutral-200"
+              ? "hover:bg-zen-surface text-neutral-400 hover:text-neutral-200"
               : "hover:bg-neutral-200/50 text-neutral-500 hover:text-neutral-800"
           } flex items-center gap-1.5 select-none active:scale-95 cursor-pointer`}
         >

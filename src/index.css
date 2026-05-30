@@ -1,13 +1,65 @@
 @import "tailwindcss";
 
+/* Theme is driven by a `.dark` class on <html> (toggled from React),
+   so dark: variants follow the user's chosen theme, not the OS setting. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", monospace;
+
+  /* Softened neutral scale — lower contrast than Tailwind defaults so the
+     theme is easier on the eyes. This is the single place to retune greys;
+     every text-/bg-/border-neutral-* utility in the app reads from here. */
+  --color-neutral-50: #f6f6f4;
+  --color-neutral-100: #efefed;
+  --color-neutral-200: #e2e2df;
+  --color-neutral-300: #cacac6;
+  --color-neutral-400: #9c9c98;
+  --color-neutral-500: #7b7b77;
+  --color-neutral-600: #565652;
+  --color-neutral-700: #4a4a46;
+  --color-neutral-800: #2e2e2c;
+  --color-neutral-900: #242422;
+  --color-neutral-950: #1a1a18;
+}
+
+/* Semantic surface tokens — switch with the .dark class. Tune the whole
+   light/dark backdrop here. */
+:root {
+  --zen-bg: #eeedea;       /* page backdrop (light) */
+  --zen-surface: #f7f7f5;  /* raised: menus, popovers, tooltips */
+  --zen-fg: #4a4a48;       /* base text */
+
+  /* Cards: a barely-there fill + hairline border so tiles separate gently
+     without hard boxes. Tune the whole card look from here. */
+  --zen-elevate: rgba(255, 255, 255, 0.55);
+  --zen-line: rgba(20, 20, 19, 0.10);
+  --zen-line-strong: rgba(20, 20, 19, 0.20);
+}
+
+.dark {
+  --zen-bg: #1f1f21;       /* page backdrop (dark) — lifted off pure black */
+  --zen-surface: #27272a;  /* raised surfaces */
+  --zen-fg: #c4c4c0;       /* base text — dimmed to cut glare */
+
+  --zen-elevate: rgba(255, 255, 255, 0.025);
+  --zen-line: rgba(255, 255, 255, 0.08);
+  --zen-line-strong: rgba(255, 255, 255, 0.17);
+}
+
+@theme inline {
+  --color-zen-bg: var(--zen-bg);
+  --color-zen-surface: var(--zen-surface);
+  --color-zen-fg: var(--zen-fg);
+  --color-zen-elevate: var(--zen-elevate);
+  --color-zen-line: var(--zen-line);
+  --color-zen-line-strong: var(--zen-line-strong);
 }
 
 body {
-  background-color: #000000;
-  color: #ffffff;
+  background-color: var(--zen-bg);
+  color: var(--zen-fg);
   font-family: var(--font-sans);
 }
 

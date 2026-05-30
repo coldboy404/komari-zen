@@ -11,8 +11,7 @@ type DashboardSkeletonProps = {
 export function DashboardSkeleton({ theme }: DashboardSkeletonProps) {
   const block =
     theme === "dark" ? "bg-neutral-800/60" : "bg-neutral-300/50";
-  const cardBorder =
-    theme === "dark" ? "border-neutral-800" : "border-neutral-200";
+  const cardBorder = "border-zen-line bg-zen-elevate";
 
   const Bar = ({ className = "" }: { className?: string }) => (
     <div className={`zen-skeleton rounded ${block} ${className}`} />

@@ -32,10 +32,7 @@ export function AppLayout() {
 
   const textMutedClass =
     theme === "dark" ? "text-neutral-500/85" : "text-neutral-500";
-  const bgClass =
-    theme === "dark"
-      ? "bg-[#18181a] text-neutral-300"
-      : "bg-[#f5f5f3] text-neutral-700";
+  const bgClass = "bg-zen-bg text-zen-fg";
 
   if (isLoading) {
     return (

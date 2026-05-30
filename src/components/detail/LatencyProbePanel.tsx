@@ -368,8 +368,8 @@ export function LatencyProbePanel({
                 <div
                   className={`absolute z-10 min-w-[8.5rem] max-w-[min(11rem,calc(100vw-2.5rem))] rounded-md border px-2.5 py-2 shadow-lg pointer-events-none ${zenType.caption} font-mono select-none ${
                     theme === "dark"
-                      ? "border-neutral-800/80 bg-neutral-950/90 text-neutral-200"
-                      : "border-neutral-200/90 bg-white/95 text-neutral-800"
+                      ? "border-neutral-800/80 bg-zen-surface/95 text-neutral-200"
+                      : "border-neutral-200/90 bg-zen-surface/95 text-neutral-800"
                   }`}
                   style={{
                     left: `${crosshairRatio * 100}%`,

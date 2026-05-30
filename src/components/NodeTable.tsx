@@ -426,8 +426,8 @@ export function NodeTable({
                 {/* Dropdown Options */}
                 <div className={`absolute right-0 mt-2 w-44 z-50 border rounded-sm shadow-md overflow-hidden ${
                   theme === "dark" 
-                    ? "bg-[#1f1f22] border-neutral-800 text-neutral-300" 
-                    : "bg-white border-neutral-200 text-neutral-700"
+                    ? "bg-zen-surface border-neutral-800 text-neutral-300" 
+                    : "bg-zen-surface border-neutral-200 text-neutral-700"
                 }`}>
                   <div className={`px-2.5 py-1.5 border-b ${zenType.micro} zen-track-tight font-bold ${
                     theme === "dark" ? "border-neutral-800 text-neutral-500" : "border-neutral-100 text-neutral-400"
@@ -466,7 +466,7 @@ export function NodeTable({
                     })}
                   </div>
                   {/* Footer toggle button */}
-                  <div className={`border-t p-1 ${theme === "dark" ? "border-neutral-800 bg-[#1f1f22]" : "border-neutral-100 bg-neutral-50"}`}>
+                  <div className={`border-t p-1 ${theme === "dark" ? "border-neutral-800 bg-zen-surface" : "border-neutral-100 bg-neutral-50"}`}>
                     <button
                       onClick={() => {
                         setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -574,9 +574,7 @@ export function NodeTable({
                     <tr
                       key={node.id}
                       onClick={() => onSelectNode(node)}
-                      className={`cursor-pointer transition-colors group border-b ${
-                        theme === "dark" ? "border-neutral-900/50" : "border-neutral-100"
-                      } hover:bg-neutral-500/5 ${
+                      className={`cursor-pointer transition-colors group border-b border-zen-line hover:bg-zen-elevate ${
                         !node.online ? "opacity-35 grayscale contrast-75 saturate-50 select-none" : ""
                       }`}
                     >
@@ -775,11 +773,7 @@ export function NodeTable({
                 <div
                   key={node.id}
                   onClick={() => onSelectNode(node)}
-                  className={`cursor-pointer group flex flex-col gap-3 transition-all p-4 sm:p-5 rounded-sm border ${
-                    theme === "dark"
-                      ? "border-neutral-900/60 bg-transparent hover:bg-neutral-500/[0.02] hover:border-neutral-800"
-                      : "border-neutral-300/30 bg-transparent hover:bg-neutral-500/[0.02] hover:border-neutral-300/50"
-                  } ${!node.online ? "opacity-35 grayscale contrast-75 saturate-50 select-none" : ""}`}
+                  className={`cursor-pointer group flex flex-col gap-3 transition-all duration-200 p-4 sm:p-5 rounded-xl border border-zen-line bg-zen-elevate shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:border-zen-line-strong hover:shadow-[0_4px_14px_rgba(0,0,0,0.06)] ${!node.online ? "opacity-35 grayscale contrast-75 saturate-50 select-none" : ""}`}
                 >
                   {/* Card header：标签与标题同一行，不额外占高 */}
                   <div className="flex items-center gap-2 min-w-0">

@@ -217,7 +217,7 @@ export function ConsoleHeader({
                 className={`absolute right-0 top-full mt-1.5 z-[100] min-w-[9.5rem] py-1 border shadow-lg rounded-sm ${
                   theme === "dark"
                     ? "bg-neutral-900 border-neutral-700"
-                    : "bg-white border-neutral-200"
+                    : "bg-zen-surface border-neutral-200"
                 }`}
               >
                 {LANG_MENU_OPTIONS.map((opt) => {

@@ -48,5 +48,11 @@ export function useThemePreference() {
   const theme: ResolvedTheme =
     preference === "auto" ? systemTheme : preference;
 
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle("dark", theme === "dark");
+    root.style.colorScheme = theme;
+  }, [theme]);
+
   return { preference, theme, setPreference };
 }

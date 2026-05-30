@@ -338,8 +338,8 @@ const MiniLineChart = ({
           <div
             className={`absolute z-10 pointer-events-none px-2 py-1.5 rounded shadow-lg border ${zenType.caption} font-mono flex flex-col gap-0.5 select-none max-w-[min(280px,calc(100vw-2rem))] ${
               theme === "dark"
-                ? "bg-neutral-900 border-neutral-800 text-neutral-100"
-                : "bg-white border-neutral-200 text-neutral-800"
+                ? "bg-zen-surface border-neutral-800 text-neutral-100"
+                : "bg-zen-surface border-neutral-200 text-neutral-800"
             }`}
             style={{
               left: `${(activeX / width) * 100}%`,
@@ -809,8 +809,8 @@ export function NodeDetail({
                 <div className="absolute inset-0 z-30 flex items-center justify-center select-none bg-transparent pointer-events-none">
                   <div className={`px-4 py-2.5 ${zenType.caption} uppercase font-bold zen-track-tight font-mono flex items-center gap-2.5 border rounded-sm shadow-sm ${
                     theme === "dark"
-                      ? "bg-[#1f1f22]/90 border-neutral-800 text-emerald-500"
-                      : "bg-white/95 border-neutral-200/80 text-emerald-600"
+                      ? "bg-zen-surface/95 border-neutral-800 text-emerald-500"
+                      : "bg-zen-surface/95 border-neutral-200/80 text-emerald-600"
                   }`}>
                     <svg className="animate-spin h-3.5 w-3.5 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -825,8 +825,8 @@ export function NodeDetail({
                 <div className="absolute inset-0 z-30 flex items-center justify-center select-none bg-transparent pointer-events-none">
                   <div className={`px-4 py-2.5 ${zenType.caption} uppercase font-bold zen-track-tight font-mono flex items-center gap-2.5 border rounded-sm shadow-sm ${
                     theme === "dark"
-                      ? "bg-[#1f1f22]/90 border-neutral-800 text-emerald-500"
-                      : "bg-white/95 border-neutral-200/80 text-emerald-600"
+                      ? "bg-zen-surface/95 border-neutral-800 text-emerald-500"
+                      : "bg-zen-surface/95 border-neutral-200/80 text-emerald-600"
                   }`}>
                     <svg className="animate-spin h-3.5 w-3.5 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

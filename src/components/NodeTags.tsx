@@ -141,8 +141,8 @@ function TagOverflow({
 
   const panelClass =
     theme === "dark"
-      ? "border border-neutral-800/50 bg-neutral-950/90 text-neutral-300 shadow-[0_4px_16px_rgba(0,0,0,0.35)]"
-      : "border border-neutral-300/25 bg-[#eeeee8]/95 text-neutral-600 shadow-[0_4px_14px_rgba(0,0,0,0.06)]";
+      ? "border border-neutral-800/50 bg-zen-surface/95 text-neutral-300 shadow-[0_4px_16px_rgba(0,0,0,0.35)]"
+      : "border border-neutral-300/25 bg-zen-surface/95 text-neutral-600 shadow-[0_4px_14px_rgba(0,0,0,0.06)]";
 
   const reposition = React.useCallback(() => {
     const trigger = triggerRef.current;
