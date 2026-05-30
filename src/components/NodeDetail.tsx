@@ -35,6 +35,7 @@ import { OsIcon } from "@/components/OsIcon";
 import { NodeTags } from "@/components/NodeTags";
 import { parseNodeTags } from "@/lib/parseNodeTags";
 import { useChartScrub } from "@/hooks/useChartScrub";
+import { useLiveSeries } from "@/hooks/useLiveSeries";
 import { zenType } from "@/lib/typography";
 
 interface NodeDetailProps {
@@ -42,6 +43,52 @@ interface NodeDetailProps {
   lang: Lang;
   theme: "light" | "dark";
   recentRecords?: LiveRecord[];
+}
+
+const isNum = (v: number | null): v is number =>
+  v != null && Number.isFinite(v);
+
+type ChartPt = { x: number; y: number; val: number };
+
+/** Build an SVG line path, starting a fresh sub-path after each null gap. */
+function buildLinePath(pts: (ChartPt | null)[]): string {
+  let d = "";
+  let started = false;
+  for (const p of pts) {
+    if (!p) {
+      started = false;
+      continue;
+    }
+    d += started ? ` L ${p.x} ${p.y}` : `M ${p.x} ${p.y}`;
+    started = true;
+  }
+  return d.trim();
+}
+
+/** Build the area fill under each contiguous (gap-free) run of points. */
+function buildAreaPath(pts: (ChartPt | null)[], baseY: number): string {
+  let d = "";
+  let run: ChartPt[] = [];
+  const flush = () => {
+    if (run.length === 0) return;
+    d += ` M ${run[0].x} ${baseY}`;
+    for (const p of run) d += ` L ${p.x} ${p.y}`;
+    d += ` L ${run[run.length - 1].x} ${baseY} Z`;
+    run = [];
+  };
+  for (const p of pts) {
+    if (!p) flush();
+    else run.push(p);
+  }
+  flush();
+  return d.trim();
+}
+
+function lastValidIndex(arr: (number | null)[]): number {
+  for (let i = arr.length - 1; i >= 0; i--) {
+    if (isNum(arr[i])) return i;
+  }
+  return -1;
 }
 
 const MiniLineChart = ({
@@ -62,9 +109,10 @@ const MiniLineChart = ({
   decimals,
   hasData = true,
   valueFormatter,
+  timestamps,
 }: {
-  data: number[];
-  data2?: number[];
+  data: (number | null)[];
+  data2?: (number | null)[];
   color?: string;
   color2?: string;
   maxVal?: number;
@@ -80,20 +128,24 @@ const MiniLineChart = ({
   decimals?: boolean;
   hasData?: boolean;
   valueFormatter?: (value: number) => string;
+  timestamps?: number[];
 }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
 
-  const rawMax = Math.max(maxVal, ...data, ...(data2 ?? []), 0.001);
+  const rawMax = Math.max(
+    maxVal,
+    ...data.filter(isNum),
+    ...(data2?.filter(isNum) ?? []),
+    0.001,
+  );
   const speedScale =
     unitMode === "speed" ? pickSpeedScale(rawMax) : null;
+  const scaleVal = (v: number | null): number | null =>
+    v == null ? null : speedScale ? scaleSpeedValue(v, speedScale) : v;
   const chartData =
-    unitMode === "speed" && speedScale
-      ? data.map((v) => scaleSpeedValue(v, speedScale))
-      : data;
+    unitMode === "speed" && speedScale ? data.map(scaleVal) : data;
   const chartData2 =
-    data2 && unitMode === "speed" && speedScale
-      ? data2.map((v) => scaleSpeedValue(v, speedScale))
-      : data2;
+    data2 && unitMode === "speed" && speedScale ? data2.map(scaleVal) : data2;
   const chartMax =
     unitMode === "speed" && speedScale
       ? scaleSpeedValue(rawMax, speedScale) * 1.15
@@ -142,27 +194,29 @@ const MiniLineChart = ({
     onTouchEnd,
   } = useChartScrub(containerRef, scrubConfig);
 
-  const points1 = chartData.map((val, i) => {
-    const x = paddingX + (i / denominator) * chartWidth;
-    const y = height - paddingY - (Math.max(0, Math.min(maxValSafe, val)) / maxValSafe) * chartHeight;
+  const baseY = height - paddingY;
+  const toPoint = (val: number | null, x: number): ChartPt | null => {
+    if (val == null) return null;
+    const y =
+      baseY - (Math.max(0, Math.min(maxValSafe, val)) / maxValSafe) * chartHeight;
     return { x, y, val };
-  });
+  };
+
+  const points1 = chartData.map((val, i) =>
+    toPoint(val, paddingX + (i / denominator) * chartWidth),
+  );
 
   const denominator2 = chartData2 ? Math.max(1, chartData2.length - 1) : 1;
   const points2 = chartData2
-    ? chartData2.map((val, i) => {
-        const x = paddingX + (i / denominator2) * chartWidth;
-        const y = height - paddingY - (Math.max(0, Math.min(maxValSafe, val)) / maxValSafe) * chartHeight;
-        return { x, y, val };
-      })
+    ? chartData2.map((val, i) =>
+        toPoint(val, paddingX + (i / denominator2) * chartWidth),
+      )
     : null;
 
-  // Generate SVG path coordinate string.
-  const pathD = points1.length > 0 ? `M ${points1[0].x} ${points1[0].y} ` + points1.map(p => `L ${p.x} ${p.y}`).join(" ") : "";
-  const areaD = points1.length > 0 ? `${pathD} L ${points1[points1.length - 1].x} ${height - paddingY} L ${points1[0].x} ${height - paddingY} Z` : "";
-
-  const pathD2 = points2 && points2.length > 0 ? `M ${points2[0].x} ${points2[0].y} ` + points2.map(p => `L ${p.x} ${p.y}`).join(" ") : "";
-  const areaD2 = points2 && points2.length > 0 ? `${pathD2} L ${points2[points2.length - 1].x} ${height - paddingY} L ${points2[0].x} ${height - paddingY} Z` : "";
+  const pathD = buildLinePath(points1);
+  const areaD = buildAreaPath(points1, baseY);
+  const pathD2 = points2 ? buildLinePath(points2) : "";
+  const areaD2 = points2 ? buildAreaPath(points2, baseY) : "";
 
   // Grid lines
   const gridLines = [0.25, 0.5, 0.75, 1];
@@ -171,15 +225,38 @@ const MiniLineChart = ({
   const labelColor = theme === "dark" ? "text-neutral-500 font-mono" : "text-neutral-500 font-mono";
 
   const isHovering = hoveredIndex !== null;
-  const activeIdx = hoveredIndex !== null ? hoveredIndex : chartData.length - 1;
+  const lastIdx1 = lastValidIndex(chartData);
+  const activeIdx =
+    hoveredIndex !== null
+      ? hoveredIndex
+      : lastIdx1 >= 0
+        ? lastIdx1
+        : chartData.length - 1;
 
   const displayVal1 = data[activeIdx] ?? 0;
   const displayVal2 = data2 ? (data2[activeIdx] ?? 0) : null;
 
-  const activeX = points1[activeIdx]?.x ?? 0;
-  const activeY1 = points1[activeIdx]?.y ?? 0;
-  const activeY2 = points2 && points2[activeIdx] ? points2[activeIdx].y : 0;
-  const minY = points2 && points2[activeIdx] ? Math.min(activeY1, activeY2) : activeY1;
+  const hoverTs = timestamps?.[activeIdx];
+  const hoverLabel =
+    hoverTs != null
+      ? (() => {
+          const d = new Date(hoverTs);
+          const p = (n: number) => String(n).padStart(2, "0");
+          return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+        })()
+      : formatChartOffsetLabel(
+          chartData.length - 1 - activeIdx,
+          timeRange,
+          chartData.length,
+          messages,
+        );
+
+  const fallbackX = paddingX + (activeIdx / denominator) * chartWidth;
+  const activeX = points1[activeIdx]?.x ?? fallbackX;
+  const activeY1 = points1[activeIdx]?.y ?? baseY;
+  const activeY2 = points2 && points2[activeIdx] ? points2[activeIdx]!.y : baseY;
+  const minY =
+    points2 && points2[activeIdx] ? Math.min(activeY1, activeY2) : activeY1;
 
   const safeId = title.replace(/[^a-zA-Z0-9]/g, "_");
 
@@ -198,13 +275,8 @@ const MiniLineChart = ({
         <span className="h-px flex-1 bg-zen-line" aria-hidden />
         <div className={`shrink-0 flex items-center justify-end gap-2 sm:gap-3 ${zenType.data} font-mono select-none font-bold`}>
           {isHovering && (
-            <span className={`${zenType.label} text-[#f59e0b] bg-[#f59e0b]/15 px-1 py-0.5 rounded tracking-wide uppercase font-black`}>
-              {formatChartOffsetLabel(
-                chartData.length - 1 - activeIdx,
-                timeRange,
-                chartData.length,
-                messages,
-              )}
+            <span className={`${zenType.label} text-neutral-600 dark:text-neutral-300 bg-neutral-500/10 px-1.5 py-0.5 rounded tracking-wide font-bold tabular-nums`}>
+              {hoverLabel}
             </span>
           )}
           <span style={{ color }}>● {formatDisplay(displayVal1)}</span>
@@ -315,16 +387,16 @@ const MiniLineChart = ({
           )}
 
           {/* Bullet points: Active / Hover state */}
-          {points1.length > 0 && (
+          {lastIdx1 >= 0 && (
             <g>
               <circle cx={activeX} cy={activeY1} r={isHovering ? "4" : "3"} fill={color} />
-              {!isHovering && (
-                <circle cx={points1[points1.length - 1].x} cy={points1[points1.length - 1].y} r="6" fill="none" stroke={color} strokeWidth="1" className="animate-pulse" />
+              {!isHovering && points1[lastIdx1] && (
+                <circle cx={points1[lastIdx1]!.x} cy={points1[lastIdx1]!.y} r="6" fill="none" stroke={color} strokeWidth="1" className="animate-pulse" />
               )}
             </g>
           )}
 
-          {points2 && points2.length > 0 && (
+          {points2 && lastValidIndex(chartData2 ?? []) >= 0 && (
             <g>
               <circle cx={activeX} cy={activeY2} r={isHovering ? "4" : "3"} fill={color2} />
             </g>
@@ -401,7 +473,10 @@ export function NodeDetail({
   const [subSection, setSubSection] = React.useState<"metrics" | "latency">(
     "metrics",
   );
+  const [liveMode, setLiveMode] = React.useState(true);
   const [selectedProbes, setSelectedProbes] = React.useState<string[]>([]);
+
+  const liveSamples = useLiveSeries(node, recordEnabled && node.online);
 
   React.useEffect(() => {
     if (loadPresets.length === 0) return;
@@ -417,7 +492,8 @@ export function NodeDetail({
     }
   }, [pingPresets, selectedPingHours]);
 
-  const loadHours = recordEnabled && node.online ? selectedLoadHours : 0;
+  const loadHours =
+    recordEnabled && node.online && !liveMode ? selectedLoadHours : 0;
   const {
     records: loadRecords,
     isLoading: isLoadLoading,
@@ -532,13 +608,43 @@ export function NodeDetail({
   const displayedUdpHistory = udpHist.values;
   const displayedProcessesHistory = procHist.values;
 
+  const numOnly = (a: (number | null)[]): number[] => a.filter(isNum);
   const netRawMax = Math.max(
-    ...displayedNetInHistory,
-    ...displayedNetOutHistory,
+    ...numOnly(displayedNetInHistory),
+    ...numOnly(displayedNetOutHistory),
     node.netSpeedIn * 1024,
     node.netSpeedOut * 1024,
     1,
   );
+
+  // Live (real-time) series — a rolling window appended every ~2s.
+  const live = {
+    cpu: liveSamples.map((s) => s.cpu),
+    mem: liveSamples.map((s) => s.mem),
+    swap: liveSamples.map((s) => s.swap),
+    disk: liveSamples.map((s) => s.disk),
+    netIn: liveSamples.map((s) => s.netIn),
+    netOut: liveSamples.map((s) => s.netOut),
+    tcp: liveSamples.map((s) => s.tcp),
+    udp: liveSamples.map((s) => s.udp),
+    proc: liveSamples.map((s) => s.proc),
+  };
+  const liveHasData = liveSamples.length > 0;
+  // Approximate window span in hours for the hover "time ago" label.
+  const liveTimeRange = Math.max(1, liveSamples.length) * 2 / 3600;
+  const pick = <T,>(liveVal: T, histVal: T): T => (liveMode ? liveVal : histVal);
+
+  // Absolute timestamp (epoch ms) per chart point, for the hover label.
+  const liveTimestamps = liveSamples.map((s) => s.t);
+  const histLen = displayedCpuHistory.length;
+  const histNow = Date.now();
+  const histTimestamps = Array.from({ length: histLen }, (_, i) =>
+    histNow -
+    ((histLen - 1 - i) / Math.max(1, histLen - 1)) *
+      selectedLoadHours *
+      3600_000,
+  );
+  const chartTimestamps = pick(liveTimestamps, histTimestamps);
 
   const hasTags = parseNodeTags(node.tags).length > 0;
   const publicRemarkText = node.publicRemark.trim();
@@ -796,10 +902,17 @@ export function NodeDetail({
                 <HistoryRangeSelector
                   presets={activePresets}
                   value={activeHours}
-                  onChange={handleActiveRangeChange}
+                  onChange={(h) => {
+                    if (subSection === "metrics") setLiveMode(false);
+                    handleActiveRangeChange(h);
+                  }}
                   disabled={activeRangeLoading}
                   theme={theme}
                   messages={t}
+                  showLive={subSection === "metrics"}
+                  isLive={subSection === "metrics" && liveMode}
+                  onLive={() => setLiveMode(true)}
+                  liveLabel={t.live}
                 />
               </div>
             </div>
@@ -843,16 +956,17 @@ export function NodeDetail({
                   <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 transition-all duration-300 ${isLoadLoading ? "blur-[1.5px] opacity-40 select-none pointer-events-none" : ""}`}>
                     {/* Chart 1: CPU Utilisation */}
                     <MiniLineChart
-                      data={displayedCpuHistory}
+                      data={pick(live.cpu, displayedCpuHistory)}
                       color="#10b981"
                       maxVal={100}
                       unitMode="percent"
                       title={t.cpu}
                       label1="CPU"
                       theme={theme}
-                      timeRange={selectedLoadHours}
+                      timeRange={pick(liveTimeRange, selectedLoadHours)}
                       messages={t}
-                      hasData={cpuHist.hasData}
+                      hasData={pick(liveHasData, cpuHist.hasData)}
+                      timestamps={chartTimestamps}
                       subMetrics={
                         <div className={`flex justify-between items-center ${zenType.caption} font-mono ${textMuted}`}>
                           <span>{t.lblLoadAvgShort} [{node.load5}]</span>
@@ -863,8 +977,8 @@ export function NodeDetail({
 
                     {/* Chart 2: Memory & SWAP */}
                     <MiniLineChart
-                      data={displayedMemHistory}
-                      data2={displayedSwapHistory}
+                      data={pick(live.mem, displayedMemHistory)}
+                      data2={pick(live.swap, displayedSwapHistory)}
                       color="#3b82f6"
                       color2="#8b5cf6"
                       maxVal={100}
@@ -873,9 +987,10 @@ export function NodeDetail({
                       label1="RAM"
                       label2="SWAP"
                       theme={theme}
-                      timeRange={selectedLoadHours}
+                      timeRange={pick(liveTimeRange, selectedLoadHours)}
                       messages={t}
-                      hasData={memHist.hasData || swapHist.hasData}
+                      hasData={pick(liveHasData, memHist.hasData || swapHist.hasData)}
+                      timestamps={chartTimestamps}
                       subMetrics={
                         <div className={`grid grid-cols-2 ${zenType.caption} font-mono leading-tight`}>
                           <div className="flex justify-between pr-4 border-r border-neutral-500/10">
@@ -892,16 +1007,17 @@ export function NodeDetail({
 
                     {/* Chart 3: Disk Partition Map */}
                     <MiniLineChart
-                      data={displayedDiskHistory}
+                      data={pick(live.disk, displayedDiskHistory)}
                       color="#f59e0b"
                       maxVal={100}
                       unitMode="percent"
                       title={t.lblDiskCoverage}
                       label1={t.lblDiskUsedShort}
                       theme={theme}
-                      timeRange={selectedLoadHours}
+                      timeRange={pick(liveTimeRange, selectedLoadHours)}
                       messages={t}
-                      hasData={diskHist.hasData}
+                      hasData={pick(liveHasData, diskHist.hasData)}
+                      timestamps={chartTimestamps}
                       subMetrics={
                         <div className={`${zenType.caption} font-mono ${textMuted}`}>
                           <span>{t.lblUsedTotal} </span>
@@ -914,19 +1030,23 @@ export function NodeDetail({
 
                     {/* Chart 4: Network Traffic speeds */}
                     <MiniLineChart
-                      data={displayedNetInHistory}
-                      data2={displayedNetOutHistory}
+                      data={pick(live.netIn, displayedNetInHistory)}
+                      data2={pick(live.netOut, displayedNetOutHistory)}
                       color="#14b8a6"
                       color2="#f43f5e"
-                      maxVal={netRawMax}
+                      maxVal={pick(
+                        Math.max(1, ...live.netIn, ...live.netOut),
+                        netRawMax,
+                      )}
                       unitMode="speed"
                       title={t.lblNetworkSpeedRxTx}
                       label1="RX"
                       label2="TX"
                       theme={theme}
-                      timeRange={selectedLoadHours}
+                      timeRange={pick(liveTimeRange, selectedLoadHours)}
                       messages={t}
-                      hasData={netInHist.hasData || netOutHist.hasData}
+                      hasData={pick(liveHasData, netInHist.hasData || netOutHist.hasData)}
+                      timestamps={chartTimestamps}
                       subMetrics={
                         <div className={`grid grid-cols-2 ${zenType.caption} font-mono leading-tight`}>
                           <div className="flex justify-between pr-4 border-r border-neutral-500/10">
@@ -946,19 +1066,23 @@ export function NodeDetail({
                   <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 transition-all duration-300 ${isLoadLoading ? "blur-[1.5px] opacity-40 select-none pointer-events-none" : ""}`}>
                     {/* Chart 5: Network Connections TCP/UDP */}
                     <MiniLineChart
-                      data={displayedTcpHistory}
-                      data2={displayedUdpHistory}
+                      data={pick(live.tcp, displayedTcpHistory)}
+                      data2={pick(live.udp, displayedUdpHistory)}
                       color="#10b981"
                       color2="#8b5cf6"
-                      maxVal={Math.max(120, ...displayedTcpHistory, ...displayedUdpHistory, 10)}
+                      maxVal={pick(
+                        Math.max(120, ...live.tcp, ...live.udp, 10),
+                        Math.max(120, ...numOnly(displayedTcpHistory), ...numOnly(displayedUdpHistory), 10),
+                      )}
                       unitMode="count"
                       title={t.lblNetworkConnections}
                       label1="TCP"
                       label2="UDP"
                       theme={theme}
-                      timeRange={selectedLoadHours}
+                      timeRange={pick(liveTimeRange, selectedLoadHours)}
                       messages={t}
-                      hasData={tcpHist.hasData || udpHist.hasData}
+                      hasData={pick(liveHasData, tcpHist.hasData || udpHist.hasData)}
+                      timestamps={chartTimestamps}
                       subMetrics={
                         <div className={`grid grid-cols-2 ${zenType.caption} font-mono leading-tight`}>
                           <div className="flex justify-between pr-4 border-r border-neutral-500/10">
@@ -975,16 +1099,20 @@ export function NodeDetail({
 
                     {/* Chart 6: Active Processes Count */}
                     <MiniLineChart
-                      data={displayedProcessesHistory}
+                      data={pick(live.proc, displayedProcessesHistory)}
                       color="#f59e0b"
-                      maxVal={Math.max(200, ...displayedProcessesHistory, 10)}
+                      maxVal={pick(
+                        Math.max(200, ...live.proc, 10),
+                        Math.max(200, ...numOnly(displayedProcessesHistory), 10),
+                      )}
                       unitMode="count"
                       title={t.lblProcessCount}
                       label1={t.lblActiveProc}
                       theme={theme}
-                      timeRange={selectedLoadHours}
+                      timeRange={pick(liveTimeRange, selectedLoadHours)}
                       messages={t}
-                      hasData={procHist.hasData}
+                      hasData={pick(liveHasData, procHist.hasData)}
+                      timestamps={chartTimestamps}
                       subMetrics={
                         <div className={`flex justify-between items-center ${zenType.caption} font-mono ${textMuted}`}>
                           <span>{t.lblActiveProcesses} <span className="text-[#f59e0b] font-bold">{node.processesCount ?? 0}</span></span>

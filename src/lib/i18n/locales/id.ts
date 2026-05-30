@@ -77,6 +77,7 @@ export const id = {
   noHistory: "TIDAK ADA RIWAYAT",
   tabMetrics: "METRIK",
   tabLatency: "LATENSI",
+  live: "LANGSUNG",
   sectionResourceMonitoring: "[05] MONITOR SUMBER DAYA",
   sectionLatencyDetect: "[05] DETEKSI LATENSI",
   loadingData: "MEMUAT DATA...",

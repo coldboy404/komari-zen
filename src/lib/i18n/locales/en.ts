@@ -77,6 +77,7 @@ export const en = {
   noHistory: "NO HISTORY",
   tabMetrics: "METRICS",
   tabLatency: "LATENCY",
+  live: "LIVE",
   sectionResourceMonitoring: "[05] RESOURCE MONITORING",
   sectionLatencyDetect: "[05] LATENCY DETECT",
   loadingData: "LOADING DATA...",

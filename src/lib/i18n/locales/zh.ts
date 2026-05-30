@@ -76,6 +76,7 @@ export const zh = {
   noHistory: "无历史记录",
   tabMetrics: "资源与负载",
   tabLatency: "延迟检测",
+  live: "实时",
   sectionResourceMonitoring: "[05] 资源与负载",
   sectionLatencyDetect: "[05] 延迟检测",
   loadingData: "正在获取数据...",

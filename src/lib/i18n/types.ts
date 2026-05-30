@@ -78,6 +78,7 @@ export type Messages = {
   noHistory: string;
   tabMetrics: string;
   tabLatency: string;
+  live: string;
   sectionResourceMonitoring: string;
   sectionLatencyDetect: string;
   loadingData: string;

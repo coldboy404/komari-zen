@@ -77,6 +77,7 @@ export const ja = {
   noHistory: "履歴なし",
   tabMetrics: "リソースと負荷",
   tabLatency: "遅延検出",
+  live: "リアルタイム",
   sectionResourceMonitoring: "[05] リソースと負荷",
   sectionLatencyDetect: "[05] 遅延検出",
   loadingData: "データを取得中...",

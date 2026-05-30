@@ -76,6 +76,7 @@ export const zhTW = {
   noHistory: "無歷史紀錄",
   tabMetrics: "資源與負載",
   tabLatency: "延遲檢測",
+  live: "實時",
   sectionResourceMonitoring: "[05] 資源與負載",
   sectionLatencyDetect: "[05] 延遲檢測",
   loadingData: "正在取得資料...",

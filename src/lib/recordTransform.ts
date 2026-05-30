@@ -28,7 +28,7 @@ export type LoadTotals = {
 };
 
 export type MetricHistoryResult = {
-  values: number[];
+  values: (number | null)[];
   hasData: boolean;
 };
 
@@ -217,9 +217,9 @@ export function alignLoadRecordsToChart(
   totals: LoadTotals,
   rangeHours: number,
   targetLen: number,
-): number[] {
+): (number | null)[] {
   if (records.length === 0 || targetLen <= 0) {
-    return Array(targetLen).fill(0);
+    return Array(targetLen).fill(null);
   }
 
   const sorted = [...records].sort(
@@ -245,17 +245,21 @@ export function alignLoadRecordsToChart(
   }
 
   return buckets.map((bucket) => {
-    if (bucket.length === 0) return 0;
+    if (bucket.length === 0) return null;
     return bucket.reduce((s, v) => s + v, 0) / bucket.length;
   });
 }
 
-export function padSeriesLeft(values: number[], targetLen: number): number[] {
+export function padSeriesLeft(
+  values: number[],
+  targetLen: number,
+): (number | null)[] {
   if (targetLen <= 0) return [];
-  const out = Array(targetLen).fill(0);
+  const out: (number | null)[] = Array(targetLen).fill(null);
   const copyLen = Math.min(values.length, targetLen);
+  const offset = targetLen - copyLen;
   for (let i = 0; i < copyLen; i++) {
-    out[i] = values[i];
+    out[offset + i] = values[i];
   }
   return out;
 }
