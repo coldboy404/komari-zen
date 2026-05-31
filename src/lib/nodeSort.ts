@@ -1,4 +1,5 @@
 import { formatNodeBilling, type BillingLabels } from "@/lib/billingDisplay";
+import { resolveTrafficUsedGb } from "@/lib/formatUnits";
 import type { VPSNode } from "@/types";
 
 export type NodeSortField =
@@ -9,6 +10,8 @@ export type NodeSortField =
   | "cpu"
   | "mem"
   | "disk"
+  | "bandwidth"
+  | "traffic"
   | "latency"
   | "days";
 
@@ -21,6 +24,8 @@ export const NODE_SORT_FIELD_MAP: Record<string, NodeSortField> = {
   CPU: "cpu",
   Memory: "mem",
   Disk: "disk",
+  Bandwidth: "bandwidth",
+  Traffic: "traffic",
   Latency: "latency",
   Expiry: "days",
   Status: "status",
@@ -67,6 +72,22 @@ export function sortNodeList(
       case "disk":
         valA = a.online ? a.diskUsed / a.diskTotal : -1;
         valB = b.online ? b.diskUsed / b.diskTotal : -1;
+        break;
+      case "bandwidth":
+        valA = a.online ? a.netSpeedIn + a.netSpeedOut : -1;
+        valB = b.online ? b.netSpeedIn + b.netSpeedOut : -1;
+        break;
+      case "traffic":
+        valA = resolveTrafficUsedGb(
+          a.bandwidthUsedIn,
+          a.bandwidthUsedOut,
+          a.trafficLimitType,
+        );
+        valB = resolveTrafficUsedGb(
+          b.bandwidthUsedIn,
+          b.bandwidthUsedOut,
+          b.trafficLimitType,
+        );
         break;
       case "latency":
         valA = a.online ? a.latency : 99999;

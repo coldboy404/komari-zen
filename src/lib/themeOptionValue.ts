@@ -9,6 +9,8 @@ const THEME_OPTION_VALUE_MAP: Record<string, string> = {
   处理器: "CPU",
   内存: "Memory",
   硬盘: "Disk",
+  带宽: "Bandwidth",
+  流量: "Traffic",
   延迟: "Latency",
   到期: "Expiry",
   状态: "Status",

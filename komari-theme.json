@@ -108,7 +108,7 @@
           "en": "Default sort field",
           "zh-CN": "默认排序指标"
         },
-        "options": "默认,名称,处理器,内存,硬盘,延迟,到期,状态,系统",
+        "options": "默认,名称,处理器,内存,硬盘,带宽,流量,延迟,到期,状态,系统",
         "default": "默认",
         "help": {
           "en": "Default node sort field.",

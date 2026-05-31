@@ -370,15 +370,19 @@ export function buildMetricHistory(
   return { values: Array(targetLen).fill(0), hasData: false };
 }
 
+function averagePositive(values: number[]): number {
+  if (values.length === 0) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
 export function aggregateLatency(tasks: PingTaskInfo[]): number {
   const values = tasks
     .map((t) => t.latest ?? t.avg)
     .filter((v): v is number => typeof v === "number" && v > 0);
-  if (values.length === 0) return 0;
-  return Math.min(...values);
+  return averagePositive(values);
 }
 
-/** Min latest/avg latency across live ping stats from getNodesLatestStatus. */
+/** Average latest/avg latency across live ping stats from getNodesLatestStatus. */
 export function aggregateLivePing(
   ping: Record<string, { latest?: number; avg?: number }> | undefined,
 ): number {
@@ -386,8 +390,7 @@ export function aggregateLivePing(
   const values = Object.values(ping)
     .map((p) => p.latest ?? p.avg)
     .filter((v): v is number => typeof v === "number" && v > 0);
-  if (values.length === 0) return 0;
-  return Math.min(...values);
+  return averagePositive(values);
 }
 
 export function parseLivePing(raw: unknown): Record<string, LivePingStat> | undefined {
@@ -442,7 +445,7 @@ export function taskPingVolatility(
   return null;
 }
 
-/** Last N aggregated ping samples (min latency per time anchor) for card blocks. */
+/** Last N aggregated ping samples (average latency per time anchor) for card blocks. */
 export function pingRecordsToLatencyHistory(
   records: PingRecord[],
   tasks: PingTaskInfo[],
@@ -455,10 +458,10 @@ export function pingRecordsToLatencyHistory(
 
   for (const anchor of anchors) {
     const values = Object.values(grouped[anchor] ?? {}).filter(
-      (v): v is number => typeof v === "number" && v >= 0,
+      (v): v is number => typeof v === "number" && v > 0,
     );
     if (values.length === 0) continue;
-    samples.push({ ms: Math.min(...values), t: anchor });
+    samples.push({ ms: averagePositive(values), t: anchor });
   }
 
   return samples.slice(-maxLen);

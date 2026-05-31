@@ -198,6 +198,10 @@ export function NodeTable({
         return t.mem;
       case "disk":
         return t.disk;
+      case "bandwidth":
+        return t.bandwidth;
+      case "traffic":
+        return t.traffic;
       case "latency":
         return t.ping;
       case "days":
@@ -213,6 +217,8 @@ export function NodeTable({
     { value: "cpu", label: t.cpu },
     { value: "mem", label: t.mem },
     { value: "disk", label: t.disk },
+    { value: "bandwidth", label: t.bandwidth },
+    { value: "traffic", label: t.traffic },
     ...(latencyVisible ? [{ value: "latency" as SortField, label: t.ping }] : []),
     ...(showExpiryTime ? [{ value: "days" as SortField, label: t.expiry }] : []),
     { value: "os", label: t.os },
@@ -296,9 +302,8 @@ export function NodeTable({
   );
 
   const nodeGroups = useMemo(() => {
-    const ordered = sortNodeList(nodes, sortField, sortOrder, billingLabels);
-    return collectNodeGroups(ordered);
-  }, [nodes, sortField, sortOrder, billingLabels]);
+    return collectNodeGroups(nodes);
+  }, [nodes]);
 
   const showGroupTabs = nodeGroups.length >= 1;
 
@@ -701,12 +706,8 @@ export function NodeTable({
                 {renderSortHeader("mem", t.mem)}
                 {renderSortHeader("disk", t.diskspace)}
                 {latencyVisible && renderSortHeader("latency", t.ping)}
-                <th className="py-4 px-2 font-black whitespace-nowrap">
-                  {t.bandwidth}
-                </th>
-                <th className="py-4 px-2 font-black whitespace-nowrap">
-                  {t.traffic}
-                </th>
+                {renderSortHeader("bandwidth", t.bandwidth)}
+                {renderSortHeader("traffic", t.traffic)}
                 {showExpiryTime && renderSortHeader("days", t.expiry)}
               </tr>
             </thead>
