@@ -100,22 +100,27 @@ function formatTrafficAmount(gb: number): string {
   return gb.toFixed(2);
 }
 
-/** Format a single traffic value with GB/TB unit. */
+function formatTrafficMb(mb: number): string {
+  if (!Number.isFinite(mb) || mb <= 0) return "0 MB";
+  const amount = formatTrafficAmount(mb);
+  return amount === "0.00" ? "<0.01 MB" : `${amount} MB`;
+}
+
+/** Format a single traffic value, falling back before rounded values become 0.00. */
 export function formatTrafficGb(gb: number): string {
   if (!Number.isFinite(gb) || gb <= 0) return "0 GB";
   if (gb >= 1024) {
     return `${formatTrafficAmount(gb / 1024)} TB`;
   }
+  if (formatTrafficAmount(gb) === "0.00") {
+    return formatTrafficMb(gb * 1024);
+  }
   return `${formatTrafficAmount(gb)} GB`;
 }
 
-/** Format used/limit pair with matching GB or TB units on both sides. */
+/** Format used/limit pair; each side keeps its own most readable unit. */
 export function formatTrafficPair(usedGb: number, limitGb: number): string {
-  const maxGb = Math.max(usedGb, limitGb, 0.001);
-  if (maxGb >= 1024) {
-    return `${formatTrafficAmount(usedGb / 1024)} TB / ${formatTrafficAmount(limitGb / 1024)} TB`;
-  }
-  return `${formatTrafficAmount(usedGb)} GB / ${formatTrafficAmount(limitGb)} GB`;
+  return `${formatTrafficGb(usedGb)} / ${formatTrafficGb(limitGb)}`;
 }
 
 function formatStorageGb(gb: number): string {
@@ -165,31 +170,45 @@ export function formatCountRatio(current: number, total: number): string {
   return `${current} / ${total}`;
 }
 
-export type TrafficTypeLabels = {
-  sum: string;
-  max: string;
-  min: string;
-  up: string;
-  down: string;
-};
-
-export function getTrafficTypeLabel(
-  type: TrafficLimitType | undefined,
-  labels: TrafficTypeLabels,
-): string {
+export function getTrafficTypeLabel(type: TrafficLimitType | undefined): string {
   switch (type ?? "sum") {
     case "max":
-      return labels.max;
+      return "MAX";
     case "min":
-      return labels.min;
+      return "MIN";
     case "up":
-      return labels.up;
+      return "OUT";
     case "down":
-      return labels.down;
+      return "IN";
     case "sum":
     default:
-      return labels.sum;
+      return "SUM";
   }
+}
+
+export type UptimeLabels = {
+  day: string;
+  hour: string;
+  minute: string;
+  second: string;
+};
+
+/** Komari live API returns uptime in seconds. */
+export function formatUptime(
+  seconds: number,
+  labels: UptimeLabels,
+): string {
+  if (!seconds || seconds <= 0) return "—";
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  const parts: string[] = [];
+  if (d) parts.push(`${d} ${labels.day}`);
+  if (h) parts.push(`${h} ${labels.hour}`);
+  if (m) parts.push(`${m} ${labels.minute}`);
+  if (s || parts.length === 0) parts.push(`${s} ${labels.second}`);
+  return parts.join(" ");
 }
 
 export function formatUpdatedAt(raw: string | number | undefined | null): string {

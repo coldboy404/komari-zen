@@ -6,13 +6,13 @@
 import React, { Suspense, lazy, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import type { VPSNode } from "@/types";
 import type { Lang } from "@/lib/i18n";
 import { translations } from "@/lib/i18n";
 import { zenType, zenTouch } from "@/lib/typography";
 import { zenBorder, zenText } from "@/lib/zenSemantics";
 import { useZenPresence, ZEN_MOTION_MODAL_EXIT_MS } from "@/hooks/useZenPresence";
 import { zenModalMotion, zenMotion } from "@/lib/zenMotion";
+import type { NodeDistributionMapNode } from "@/components/NodeDistributionMap";
 
 const NodeDistributionMap = lazy(() =>
   import("@/components/NodeDistributionMap").then((m) => ({
@@ -23,7 +23,7 @@ const NodeDistributionMap = lazy(() =>
 interface NodeDistributionMapModalProps {
   open: boolean;
   onClose: () => void;
-  nodes: VPSNode[];
+  nodes: NodeDistributionMapNode[];
   theme: "light" | "dark";
   lang: Lang;
 }

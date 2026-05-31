@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import React, { Suspense, lazy } from "react";
+import React from "react";
 import { useMatch } from "react-router-dom";
 import { AnimatedOutlet } from "@/components/AnimatedOutlet";
 import { ConsoleHeader } from "@/components/ConsoleHeader";
@@ -20,12 +20,6 @@ import { translations } from "@/lib/i18n";
 import { zenType } from "@/lib/typography";
 import { zenBorder, zenInteractive, zenText } from "@/lib/zenSemantics";
 import { sanitizeFooterHtml } from "@/lib/sanitizeHtml";
-
-const NodeDistributionMap = lazy(() =>
-  import("@/components/NodeDistributionMap").then((m) => ({
-    default: m.NodeDistributionMap,
-  })),
-);
 
 export function AppLayout() {
   useSiteMeta();
@@ -97,18 +91,6 @@ export function AppLayout() {
             view={isDetail ? "detail" : "dashboard"}
             showNodeMap={showNodeMap}
           />
-
-          {!isDetail && showNodeMap ? (
-            <div className="md:hidden">
-              <Suspense fallback={null}>
-                <NodeDistributionMap
-                  nodes={nodes}
-                  theme={theme}
-                  lang={lang}
-                />
-              </Suspense>
-            </div>
-          ) : null}
 
           <main
             className={

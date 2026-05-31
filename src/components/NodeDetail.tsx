@@ -33,15 +33,22 @@ import {
   formatSpeedAxisMax,
   formatStoragePair,
   formatUpdatedAt,
+  formatUptime,
 } from "@/lib/formatUnits";
+import {
+  formatPricePart,
+  isExpiryUnset,
+  resolveExpiryState,
+  type BillingLabels,
+} from "@/lib/billingDisplay";
 import { Flag } from "@/components/Flag";
 import { OsIcon } from "@/components/OsIcon";
 import { NodeTags } from "@/components/NodeTags";
 import { parseNodeTags } from "@/lib/parseNodeTags";
 import { useChartScrub } from "@/hooks/useChartScrub";
 import { useLiveSeries } from "@/hooks/useLiveSeries";
-import { zenType } from "@/lib/typography";
-import { zenBorder, zenFill, zenInteractive, zenPopover, zenText } from "@/lib/zenSemantics";
+import { zenType, zenTouch } from "@/lib/typography";
+import { zenBorder, zenFill, zenPopover, zenText } from "@/lib/zenSemantics";
 import { zenMotion } from "@/lib/zenMotion";
 import { ZenTabControl } from "@/components/motion/ZenTabControl";
 
@@ -208,21 +215,35 @@ const MiniLineChart = ({
 }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
 
-  const rawMax = Math.max(
-    maxVal,
-    ...data.filter(isNum),
-    ...(data2?.filter(isNum) ?? []),
-    ...(extraSeries?.flatMap((s) => s.data.filter(isNum)) ?? []),
-    0.001,
+  const rawMax = React.useMemo(
+    () =>
+      Math.max(
+        maxVal,
+        ...data.filter(isNum),
+        ...(data2?.filter(isNum) ?? []),
+        ...(extraSeries?.flatMap((s) => s.data.filter(isNum)) ?? []),
+        0.001,
+      ),
+    [maxVal, data, data2, extraSeries],
   );
-  const speedScale =
-    unitMode === "speed" ? pickSpeedScale(rawMax) : null;
-  const scaleVal = (v: number | null): number | null =>
-    v == null ? null : speedScale ? scaleSpeedValue(v, speedScale) : v;
-  const chartData =
-    unitMode === "speed" && speedScale ? data.map(scaleVal) : data;
-  const chartData2 =
-    data2 && unitMode === "speed" && speedScale ? data2.map(scaleVal) : data2;
+  const speedScale = React.useMemo(
+    () => (unitMode === "speed" ? pickSpeedScale(rawMax) : null),
+    [rawMax, unitMode],
+  );
+  const chartData = React.useMemo(
+    () =>
+      unitMode === "speed" && speedScale
+        ? data.map((v) => (v == null ? null : scaleSpeedValue(v, speedScale)))
+        : data,
+    [data, speedScale, unitMode],
+  );
+  const chartData2 = React.useMemo(
+    () =>
+      data2 && unitMode === "speed" && speedScale
+        ? data2.map((v) => (v == null ? null : scaleSpeedValue(v, speedScale)))
+        : data2,
+    [data2, speedScale, unitMode],
+  );
   const chartMax =
     unitMode === "speed" && speedScale
       ? scaleSpeedValue(rawMax, speedScale) * 1.15
@@ -272,39 +293,58 @@ const MiniLineChart = ({
   } = useChartScrub(containerRef, scrubConfig);
 
   const baseY = height - paddingY;
-  const toPoint = (val: number | null, x: number): ChartPt | null => {
-    if (val == null) return null;
-    const y =
-      baseY - (Math.max(0, Math.min(maxValSafe, val)) / maxValSafe) * chartHeight;
-    return { x, y, val };
-  };
+  const chartGeometry = React.useMemo(() => {
+    const toPoint = (val: number | null, x: number): ChartPt | null => {
+      if (val == null) return null;
+      const y =
+        baseY -
+        (Math.max(0, Math.min(maxValSafe, val)) / maxValSafe) * chartHeight;
+      return { x, y, val };
+    };
 
-  const points1 = chartData.map((val, i) =>
-    toPoint(val, paddingX + (i / denominator) * chartWidth),
-  );
-
-  const denominator2 = chartData2 ? Math.max(1, chartData2.length - 1) : 1;
-  const points2 = chartData2
-    ? chartData2.map((val, i) =>
-        toPoint(val, paddingX + (i / denominator2) * chartWidth),
-      )
-    : null;
-
-  const extraLayers = (extraSeries ?? []).map((series) => {
-    const denominatorExtra = Math.max(1, series.data.length - 1);
-    const points = series.data.map((val, i) =>
-      toPoint(val, paddingX + (i / denominatorExtra) * chartWidth),
+    const points1 = chartData.map((val, i) =>
+      toPoint(val, paddingX + (i / denominator) * chartWidth),
     );
-    return { ...series, points };
-  });
 
-  const pathD = buildLinePath(points1);
-  const areaD = buildAreaPath(points1, baseY);
-  const pathD2 = points2 ? buildLinePath(points2) : "";
-  const areaD2 = points2 ? buildAreaPath(points2, baseY) : "";
+    const denominator2 = chartData2 ? Math.max(1, chartData2.length - 1) : 1;
+    const points2 = chartData2
+      ? chartData2.map((val, i) =>
+          toPoint(val, paddingX + (i / denominator2) * chartWidth),
+        )
+      : null;
+
+    const extraLayers = (extraSeries ?? []).map((series) => {
+      const denominatorExtra = Math.max(1, series.data.length - 1);
+      const points = series.data.map((val, i) =>
+        toPoint(val, paddingX + (i / denominatorExtra) * chartWidth),
+      );
+      return { ...series, points };
+    });
+
+    return {
+      points1,
+      points2,
+      extraLayers,
+      pathD: buildLinePath(points1),
+      areaD: buildAreaPath(points1, baseY),
+      pathD2: points2 ? buildLinePath(points2) : "",
+      areaD2: points2 ? buildAreaPath(points2, baseY) : "",
+    };
+  }, [
+    baseY,
+    chartData,
+    chartData2,
+    chartHeight,
+    chartWidth,
+    denominator,
+    extraSeries,
+    maxValSafe,
+  ]);
+  const { points1, points2, extraLayers, pathD, areaD, pathD2, areaD2 } =
+    chartGeometry;
 
   // Grid lines
-  const gridLines = [0.25, 0.5, 0.75, 1];
+  const gridLines = React.useMemo(() => [0.25, 0.5, 0.75, 1], []);
 
   const strokeColor = theme === "dark" ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.04)";
   const labelColor = `${zenText.subtle} font-mono`;
@@ -721,6 +761,9 @@ export function NodeDetail({
   const handleActiveRangeChange =
     subSection === "metrics" ? handleLoadRangeChange : handlePingRangeChange;
 
+  const monitoringSectionIndex =
+    t.sectionResourceMonitoring.match(/^\[[^\]]+\]/)?.[0] ?? "[03]";
+
   // Helper to format speeds (node fields are KB/s)
   const formatSpeed = (kbps: number) => formatKbps(kbps);
 
@@ -770,27 +813,44 @@ export function NodeDetail({
     </div>
   );
 
-  const loadTotals = loadTotalsFromNode(node);
+  const loadTotals = React.useMemo(() => loadTotalsFromNode(node), [node]);
 
-  const buildHistory = (metric: Parameters<typeof buildMetricHistory>[0]) =>
-    buildMetricHistory(
-      metric,
-      selectedLoadHours,
-      loadTotals,
-      loadRecords,
-      recentRecords,
-    );
+  const metricHistory = React.useMemo(() => {
+    const buildHistory = (
+      metric: Parameters<typeof buildMetricHistory>[0],
+    ) =>
+      buildMetricHistory(
+        metric,
+        selectedLoadHours,
+        loadTotals,
+        loadRecords,
+        recentRecords,
+      );
 
-  const cpuHist = buildHistory("cpu");
-  const loadHist = buildHistory("load1");
-  const memHist = buildHistory("mem");
-  const swapHist = buildHistory("swap");
-  const diskHist = buildHistory("disk");
-  const netInHist = buildHistory("netin");
-  const netOutHist = buildHistory("netout");
-  const tcpHist = buildHistory("tcp");
-  const udpHist = buildHistory("udp");
-  const procHist = buildHistory("processes");
+    return {
+      cpu: buildHistory("cpu"),
+      load: buildHistory("load1"),
+      mem: buildHistory("mem"),
+      swap: buildHistory("swap"),
+      disk: buildHistory("disk"),
+      netIn: buildHistory("netin"),
+      netOut: buildHistory("netout"),
+      tcp: buildHistory("tcp"),
+      udp: buildHistory("udp"),
+      proc: buildHistory("processes"),
+    };
+  }, [selectedLoadHours, loadTotals, loadRecords, recentRecords]);
+
+  const cpuHist = metricHistory.cpu;
+  const loadHist = metricHistory.load;
+  const memHist = metricHistory.mem;
+  const swapHist = metricHistory.swap;
+  const diskHist = metricHistory.disk;
+  const netInHist = metricHistory.netIn;
+  const netOutHist = metricHistory.netOut;
+  const tcpHist = metricHistory.tcp;
+  const udpHist = metricHistory.udp;
+  const procHist = metricHistory.proc;
 
   const displayedCpuHistory = cpuHist.values;
   const displayedMemHistory = memHist.values;
@@ -812,18 +872,22 @@ export function NodeDetail({
   );
 
   // Live (real-time) series — a rolling window appended every ~2s.
-  const live = {
-    cpu: liveSamples.map((s) => s.cpu),
-    mem: liveSamples.map((s) => s.mem),
-    swap: liveSamples.map((s) => s.swap),
-    disk: liveSamples.map((s) => s.disk),
-    netIn: liveSamples.map((s) => s.netIn),
-    netOut: liveSamples.map((s) => s.netOut),
-    tcp: liveSamples.map((s) => s.tcp),
-    udp: liveSamples.map((s) => s.udp),
-    proc: liveSamples.map((s) => s.proc),
-    load: liveSamples.map((s) => s.load1),
-  };
+  const live = React.useMemo(
+    () => ({
+      cpu: liveSamples.map((s) => s.cpu),
+      mem: liveSamples.map((s) => s.mem),
+      swap: liveSamples.map((s) => s.swap),
+      disk: liveSamples.map((s) => s.disk),
+      netIn: liveSamples.map((s) => s.netIn),
+      netOut: liveSamples.map((s) => s.netOut),
+      tcp: liveSamples.map((s) => s.tcp),
+      udp: liveSamples.map((s) => s.udp),
+      proc: liveSamples.map((s) => s.proc),
+      load: liveSamples.map((s) => s.load1),
+      timestamps: liveSamples.map((s) => s.t),
+    }),
+    [liveSamples],
+  );
   const liveHasData = liveSamples.length > 0;
   const metricsReveal = useContentReveal(isLoadLoading);
   const pingReveal = useContentReveal(isPingLoading);
@@ -841,31 +905,38 @@ export function NodeDetail({
   const pick = <T,>(liveVal: T, histVal: T): T => (liveMode ? liveVal : histVal);
 
   // Absolute timestamp (epoch ms) per chart point, for the hover label.
-  const liveTimestamps = liveSamples.map((s) => s.t);
+  const liveTimestamps = live.timestamps;
   const histLen = displayedCpuHistory.length;
-  const histNow = Date.now();
-  const histTimestamps = Array.from({ length: histLen }, (_, i) =>
-    histNow -
-    ((histLen - 1 - i) / Math.max(1, histLen - 1)) *
-      selectedLoadHours *
-      3600_000,
-  );
+  const histTimestamps = React.useMemo(() => {
+    const histNow = Date.now();
+    return Array.from({ length: histLen }, (_, i) =>
+      histNow -
+      ((histLen - 1 - i) / Math.max(1, histLen - 1)) *
+        selectedLoadHours *
+        3600_000,
+    );
+  }, [histLen, selectedLoadHours]);
   const chartTimestamps = pick(liveTimestamps, histTimestamps);
 
   const cpuCores = Math.max(1, node.cpuCores);
-  const formatLoadChartValue = (chartVal: number) =>
-    formatLoadAverage((chartVal / 100) * cpuCores);
+  const formatLoadChartValue = React.useCallback(
+    (chartVal: number) => formatLoadAverage((chartVal / 100) * cpuCores),
+    [cpuCores],
+  );
   const normLoadSeries = (liveVals: number[], histVals: (number | null)[]) =>
     normalizeLoadSeries(pick(liveVals, histVals), cpuCores);
 
-  const cpuLoadExtraSeries: ChartExtraSeries[] = [
-    {
-      data: normLoadSeries(live.load, loadHist.values),
-      color: ZEN_CHART.load,
-      label: t.lblLoad1m,
-      formatValue: formatLoadChartValue,
-    },
-  ];
+  const cpuLoadExtraSeries: ChartExtraSeries[] = React.useMemo(
+    () => [
+      {
+        data: normLoadSeries(live.load, loadHist.values),
+        color: ZEN_CHART.load,
+        label: t.lblLoad1m,
+        formatValue: formatLoadChartValue,
+      },
+    ],
+    [live.load, loadHist.values, t.lblLoad1m, formatLoadChartValue],
+  );
 
   const hasTags = parseNodeTags(node.tags).length > 0;
   const publicRemarkText = node.publicRemark.trim();
@@ -880,8 +951,45 @@ export function NodeDetail({
   const headerMetaSepClass =
     "text-sm font-black tracking-widest uppercase font-mono leading-none";
   const hasClientVersion = node.clientVersion.trim().length > 0;
-  const createdAtLabel = formatUpdatedAt(node.createdAt);
-  const hasCreatedAt = createdAtLabel !== "—";
+  const hasExpiry = !isExpiryUnset(node.expiredAt);
+  const hasRenewalPrice = node.price !== 0;
+  const expiryState = hasExpiry ? resolveExpiryState(node.expiredAt) : null;
+  const billingLabels: BillingLabels = {
+    unitDays: t.unitDays,
+    billingFree: t.billingFree,
+    billingExpired: t.billingExpired,
+    billingLongTerm: t.billingLongTerm,
+    billingNoInfo: t.billingNoInfo,
+    billingHidden: t.billingHidden,
+    billingMonthly: t.billingMonthly,
+    billingQuarterly: t.billingQuarterly,
+    billingSemiAnnual: t.billingSemiAnnual,
+    billingAnnual: t.billingAnnual,
+    billingBiennial: t.billingBiennial,
+    billingTriennial: t.billingTriennial,
+    billingQuinquennial: t.billingQuinquennial,
+    billingOnce: t.billingOnce,
+    billingCycleDays: t.billingCycleDays,
+  };
+  const expiryLabel = (() => {
+    if (!hasExpiry || !expiryState) return null;
+    if (expiryState.kind === "long_term") return t.billingLongTerm;
+    if (expiryState.kind === "expired") return t.billingExpired;
+    return formatUpdatedAt(node.expiredAt);
+  })();
+  const renewalPriceLabel = hasRenewalPrice
+    ? formatPricePart(
+        node.price,
+        node.currency,
+        node.billingCycle,
+        billingLabels,
+      ) ?? t.billingNoInfo
+    : null;
+  const expiryValueClass =
+    expiryState?.kind === "expired" ||
+    (expiryState?.kind === "active" && expiryState.daysRemaining <= 7)
+      ? "text-zen-danger font-bold"
+      : textPrimary;
   const titleLineClass = `font-black leading-snug ${textPrimary} text-xl sm:text-2xl tracking-tight break-words`;
   const titleRowRef = React.useRef<HTMLDivElement>(null);
   const titleMeasureRef = React.useRef<HTMLSpanElement>(null);
@@ -1067,12 +1175,16 @@ export function NodeDetail({
                 ) : null}
 
                 <span className={textMuted}>{t.lblUptimeSec}</span>
-                <span className={`font-bold ${textPrimary}`}>{node.uptime}</span>
-
-                <div className={`col-span-2 flex items-center gap-2 pt-2 ${zenType.data} ${textSecondary} tracking-wider font-mono uppercase`}>
-                  <span className="font-bold shrink-0">{t.agentInfo}</span>
-                  <span className="h-px flex-1 bg-zen-line" aria-hidden />
-                </div>
+                <span className={`font-bold ${textPrimary}`}>
+                  {node.online && node.uptimeSec > 0
+                    ? formatUptime(node.uptimeSec, {
+                        day: t.unitDay,
+                        hour: t.unitHour,
+                        minute: t.unitMin,
+                        second: t.unitSec,
+                      })
+                    : "—"}
+                </span>
 
                 {hasClientVersion ? (
                   <>
@@ -1083,11 +1195,11 @@ export function NodeDetail({
                   </>
                 ) : null}
 
-                {hasCreatedAt ? (
+                {hasExpiry && expiryLabel ? (
                   <>
-                    <span className={textMuted}>{t.lblCreatedAt}</span>
-                    <span className={`font-bold ${textPrimary}`}>
-                      {createdAtLabel}
+                    <span className={textMuted}>{t.lblExpiredAt}</span>
+                    <span className={`font-bold ${expiryValueClass}`}>
+                      {expiryLabel}
                     </span>
                   </>
                 ) : null}
@@ -1096,6 +1208,15 @@ export function NodeDetail({
                 <span className={`font-bold ${textPrimary}`}>
                   {formatUpdatedAt(node.updatedAt)}
                 </span>
+
+                {hasRenewalPrice && renewalPriceLabel ? (
+                  <>
+                    <span className={textMuted}>{t.lblRenewalPrice}</span>
+                    <span className={`font-bold ${textPrimary}`}>
+                      {renewalPriceLabel}
+                    </span>
+                  </>
+                ) : null}
               </div>
             </DetailSection>
 
@@ -1110,7 +1231,7 @@ export function NodeDetail({
                   </div>
                   {renderProgressBar(node.cpuUsage, "bg-zen-accent/80")}
                   <div className={`${zenType.caption} ${textMuted} mt-2 font-mono`}>
-                    {t.lblLoadAvg} [{node.load5}]
+                    {t.lblLoadAvg} [{node.loadAvg}]
                   </div>
                 </div>
 
@@ -1188,13 +1309,7 @@ export function NodeDetail({
                   {node.bandwidthTotal > 0 && (
                     <div className={`flex justify-between items-baseline pt-3 mt-3 border-t ${zenBorder.line} ${zenType.caption} font-mono`}>
                       <span className={`${textMuted} uppercase font-bold tracking-wider`}>
-                        {getTrafficTypeLabel(node.trafficLimitType, {
-                          sum: t.trafficTypeSum,
-                          max: t.trafficTypeMax,
-                          min: t.trafficTypeMin,
-                          up: t.trafficTypeUp,
-                          down: t.trafficTypeDown,
-                        })}
+                        {getTrafficTypeLabel(node.trafficLimitType)}
                       </span>
                       <span className={`font-bold ${textPrimary}`}>{formatNodeTraffic(node)}</span>
                     </div>
@@ -1206,35 +1321,46 @@ export function NodeDetail({
 
           {/* [05] UNIFIED DYNAMIC HARDWARE TIMESERIES & SYSTEM PROCESS TELEMETRY / LATENCY MONITORING */}
           {recordEnabled && (
-          <DetailSection delay={200} className="space-y-6 pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3">
-              <div className="flex justify-center md:justify-start min-w-0">
-                <span className={`font-extrabold ${zenType.body} zen-track-tight uppercase ${textSecondary} font-mono`}>
-                  {subSection === "metrics"
-                    ? t.sectionResourceMonitoring
-                    : t.sectionLatencyDetect}
+          <DetailSection delay={200} className="space-y-4 pt-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <span
+                  className={`shrink-0 font-extrabold ${zenType.body} zen-track-tight uppercase ${textSecondary} font-mono`}
+                >
+                  {monitoringSectionIndex}
                 </span>
+                <div className="max-w-full min-w-0 overflow-x-auto">
+                  <ZenTabControl
+                    tabs={[
+                      { id: "metrics", label: t.tabMetrics },
+                      { id: "latency", label: t.tabLatency },
+                    ]}
+                    value={subSection}
+                    onChange={(id) =>
+                      setSubSection(id as "metrics" | "latency")
+                    }
+                    showIndicator={false}
+                    separator={
+                      <span
+                        className={`${textSecondary} ${zenType.body} font-extrabold select-none`}
+                        aria-hidden
+                      >
+                        {" // "}
+                      </span>
+                    }
+                    tabClassName={`px-0 ${zenTouch.btn} uppercase zen-track-tight whitespace-nowrap font-mono font-extrabold ${zenType.body}`}
+                    activeClassName={textSecondary}
+                    idleClassName={`${zenText.faint} font-semibold`}
+                    className="gap-0 shrink-0 select-none"
+                  />
+                </div>
+                <span
+                  className="hidden h-px min-w-8 flex-1 bg-zen-line sm:block"
+                  aria-hidden
+                />
               </div>
 
-              <ZenTabControl
-                tabs={[
-                  { id: "metrics", label: t.tabMetrics },
-                  { id: "latency", label: t.tabLatency },
-                ]}
-                value={subSection}
-                onChange={(id) =>
-                  setSubSection(id as "metrics" | "latency")
-                }
-                separator={
-                  <span className={`${zenInteractive.tabDivider} ${zenType.caption}`}>
-                    /
-                  </span>
-                }
-                tabClassName={`px-1 zen-touch-btn uppercase tracking-widest font-black ${zenType.data}`}
-                className="gap-2 shrink-0"
-              />
-
-              <div className="flex justify-center md:justify-end min-w-0">
+              <div className="min-w-0 flex shrink-0 justify-start sm:justify-end sm:self-center">
                 <HistoryRangeSelector
                   presets={activePresets}
                   value={activeHours}

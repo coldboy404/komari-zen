@@ -22,11 +22,12 @@ export interface VPSNode {
   createdAt: string | number;
   updatedAt: string | number;
   online: boolean;
-  uptime: string;
+  uptimeSec: number;
   cpuCores: number;
   cpuVendor: string;
   cpuUsage: number; // Current CPU % (0 - 100)
   load5: string; // 1-minute load average, e.g. "0.30"
+  loadAvg: string; // 1 / 5 / 15-minute load averages, e.g. "0.30 / 0.25 / 0.20"
   systemLoad1: number;
   memoryTotal: number; // in GB
   memoryUsed: number;  // in GB

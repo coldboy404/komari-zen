@@ -5,15 +5,16 @@ export type LatencySample = { ms: number; t: number };
 /** CPU / mem / disk bar segment count in NodeTable. */
 export const METRIC_BAR_SEGMENTS = 10;
 
-/** Fixed width for "100.0%" / "177ms" value column — aligns `[` bars across rows. */
-export const METRIC_VALUE_WIDTH_CH = 6;
+/** Fixed rem widths — independent of font metrics. */
+export const METRIC_VALUE_WIDTH = "3.375rem";
+export const METRIC_BAR_WIDTH = "4.75rem";
 
-/** `[` + segments + `]` */
-export const METRIC_BAR_OUTER_WIDTH_CH = METRIC_BAR_SEGMENTS + 2;
+/** Value column + segment track — aligns rows when right-aligned. */
+export const metricWidgetGridClass =
+  "inline-grid shrink-0 items-center gap-x-1 tabular-nums font-mono grid-cols-[3.375rem_4.75rem]";
 
-/** Fixed shell: 6ch value + 12ch bar — same box width when rows are right-aligned. */
-export const metricWidgetClass =
-  "inline-grid shrink-0 grid-cols-[6ch_12ch] items-baseline gap-x-1 tabular-nums font-mono";
+/** @deprecated Use metricWidgetGridClass */
+export const metricWidgetClass = metricWidgetGridClass;
 
 /** Latency sparkline blocks — 2× segments, rendered half-size in the same bar width. */
 export const LATENCY_HISTORY_LEN = METRIC_BAR_SEGMENTS * 2;
@@ -117,6 +118,27 @@ export function latencyBlockColor(
   mean: number | null = null,
 ): string {
   return latencyTierColor(resolveLatencyTier(ms, config, mean));
+}
+
+export function latencyBlockFillClass(
+  ms: number,
+  _theme: "light" | "dark",
+  config: LatencyColorConfig = DEFAULT_LATENCY_COLOR_CONFIG,
+  mean: number | null = null,
+): string {
+  const tier = resolveLatencyTier(ms, config, mean);
+  if (tier === "empty") return "bg-zen-fill-muted/55";
+  if (tier === "green") return "bg-zen-success";
+  if (tier === "yellow") return "bg-zen-warning";
+  return "bg-zen-danger";
+}
+
+/** Map NodeTable text tier classes to segment fill colors. */
+export function metricPercentFillClass(colorClass: string): string {
+  if (colorClass.includes("text-zen-danger")) return "bg-zen-danger";
+  if (colorClass.includes("text-zen-warning")) return "bg-zen-warning";
+  if (colorClass.includes("text-zen-accent")) return "bg-zen-accent";
+  return "bg-zen-fg-strong";
 }
 
 export function padLatencyHistory(

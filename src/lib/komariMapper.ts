@@ -5,7 +5,6 @@ import type { LatencySample } from "@/lib/latencyDisplay";
 import { LATENCY_HISTORY_LEN } from "@/lib/latencyDisplay";
 import {
   formatLoadAverage,
-  formatUptime,
   resolveDiskUsedGb,
   resolveSwapUsedGb,
   resolveTrafficLimitGb,
@@ -160,12 +159,20 @@ export function mapKomariNodeToVps(
         ? live.updated_at
         : node.updated_at,
     online,
-    uptime: online && live ? formatUptime(live.uptime) : "—",
+    uptimeSec: online && live ? (live.uptime ?? 0) : 0,
     cpuCores: node.cpu_cores,
     cpuVendor: node.cpu_name,
     cpuUsage,
     load5:
       online && live ? formatLoadAverage(live.load.load1) : "—",
+    loadAvg:
+      online && live
+        ? [
+            formatLoadAverage(live.load.load1),
+            formatLoadAverage(live.load.load5),
+            formatLoadAverage(live.load.load15),
+          ].join(" / ")
+        : "—",
     systemLoad1: online && live ? live.load.load1 : 0,
     memoryTotal,
     memoryUsed,

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect, useRef, lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
 import { Settings, Globe } from "lucide-react";
 import { VPSNode } from "../types";
@@ -15,6 +15,42 @@ import { zenType, zenTouch } from "@/lib/typography";
 import { zenBorder, zenText } from "@/lib/zenSemantics";
 import { zenMotion } from "@/lib/zenMotion";
 import { NodeDistributionMapModal } from "@/components/NodeDistributionMapModal";
+import type { NodeDistributionMapNode } from "@/components/NodeDistributionMap";
+
+const NodeDistributionMap = lazy(() =>
+  import("@/components/NodeDistributionMap").then((m) => ({
+    default: m.NodeDistributionMap,
+  })),
+);
+
+function useStableMapNodes(nodes: VPSNode[]): NodeDistributionMapNode[] {
+  const ref = useRef<NodeDistributionMapNode[]>([]);
+
+  return useMemo(() => {
+    const next = nodes.map(({ id, name, flag, online }) => ({
+      id,
+      name,
+      flag,
+      online,
+    }));
+
+    const prev = ref.current;
+    const unchanged =
+      prev.length === next.length &&
+      prev.every((node, index) => {
+        const other = next[index];
+        return (
+          node.id === other.id &&
+          node.name === other.name &&
+          node.flag === other.flag &&
+          node.online === other.online
+        );
+      });
+
+    if (!unchanged) ref.current = next;
+    return ref.current;
+  }, [nodes]);
+}
 
 function MobileMetricHero({
   label,
@@ -56,6 +92,61 @@ function MobileMetricHero({
   );
 }
 
+function LocalClock({
+  label,
+  loadingLabel,
+  textMuted,
+  textPrimary,
+  className = "",
+}: {
+  label: string;
+  loadingLabel: string;
+  textMuted: string;
+  textPrimary: string;
+  className?: string;
+}) {
+  const [localTime, setLocalTime] = useState<string>("");
+  const [timeZone, setTimeZone] = useState<string>("");
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      setTimeZone(tz);
+      setLocalTime(
+        now.toLocaleString(undefined, {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        }),
+      );
+    };
+    updateTime();
+    const interval = window.setInterval(updateTime, 1000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  return (
+    <div className={className}>
+      <span className={`${zenType.label} block ${textMuted} mb-1 zen-track-tight`}>
+        {label}
+      </span>
+      <span className={`${textPrimary} text-base font-bold tracking-widest select-all`}>
+        {localTime || loadingLabel}
+      </span>
+      {timeZone ? (
+        <span className={`${zenType.label} mt-0.5 ${textMuted} tracking-wider normal-case`}>
+          {timeZone}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 interface ConsoleHeaderProps {
   nodes: VPSNode[];
   lang: Lang;
@@ -77,37 +168,15 @@ export function ConsoleHeader({
   view = "dashboard",
   showNodeMap = false,
 }: ConsoleHeaderProps) {
-  const [localTime, setLocalTime] = useState<string>("");
-  const [timeZone, setTimeZone] = useState<string>("");
   const [langOpen, setLangOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
+  const [mapExpanded, setMapExpanded] = useState(false);
   const langMenuRef = useRef<HTMLDivElement>(null);
   const t = translations[lang];
   const { publicInfo } = usePublicInfo();
   const siteName = publicInfo?.sitename || "Komari";
   const siteDescription = publicInfo?.description?.trim();
-
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      setTimeZone(tz);
-      setLocalTime(
-        now.toLocaleString(undefined, {
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: false,
-        }),
-      );
-    };
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  const mapNodes = useStableMapNodes(nodes);
 
   useEffect(() => {
     if (!langOpen) return;
@@ -325,19 +394,13 @@ export function ConsoleHeader({
         <div
           className={`md:hidden flex items-start justify-between gap-4 mt-3 ${langOpen ? "relative z-50" : ""}`}
         >
-          <div className="flex min-w-0 flex-1 flex-col text-left font-mono">
-            <span className={`${zenType.label} block ${textMuted} mb-1 zen-track-tight`}>
-              {t.localTime}
-            </span>
-            <span className={`${textPrimary} text-base font-bold tracking-widest select-all`}>
-              {localTime || t.loading}
-            </span>
-            {timeZone ? (
-              <span className={`${zenType.label} mt-0.5 ${textMuted} tracking-wider normal-case`}>
-                {timeZone}
-              </span>
-            ) : null}
-          </div>
+          <LocalClock
+            label={t.localTime}
+            loadingLabel={t.loading}
+            textMuted={textMuted}
+            textPrimary={textPrimary}
+            className="flex min-w-0 flex-1 flex-col text-left font-mono"
+          />
           <div className="shrink-0 pt-0.5">{settingsControls({ compact: true })}</div>
         </div>
 
@@ -355,19 +418,13 @@ export function ConsoleHeader({
         </div>
 
         {/* Middle: Local timezone clock */}
-        <div className="flex flex-col items-center text-center font-mono">
-          <span className={`${zenType.label} block ${textMuted} mb-1 zen-track-tight`}>
-            {t.localTime}
-          </span>
-          <span className={`${textPrimary} text-base font-bold tracking-widest select-all`}>
-            {localTime || t.loading}
-          </span>
-          {timeZone ? (
-            <span className={`${zenType.label} mt-0.5 ${textMuted} tracking-wider normal-case`}>
-              {timeZone}
-            </span>
-          ) : null}
-        </div>
+        <LocalClock
+          label={t.localTime}
+          loadingLabel={t.loading}
+          textMuted={textMuted}
+          textPrimary={textPrimary}
+          className="flex flex-col items-center text-center font-mono"
+        />
 
         {/* Right: Modern Menu Controls (with localized Dark/Light options) */}
         <div className={langOpen ? "relative z-50" : ""}>{settingsControls()}</div>
@@ -459,6 +516,47 @@ export function ConsoleHeader({
                 )}
               </span>
             </div>
+            {showNodeMap ? (
+              <>
+                <button
+                  type="button"
+                  id="mobile-node-map-toggle"
+                  aria-expanded={mapExpanded}
+                  aria-controls="mobile-node-map-panel"
+                  onClick={() => setMapExpanded((open) => !open)}
+                  className={`flex w-full justify-between gap-3 py-0.5 items-center ${zenTouch.btn} cursor-pointer`}
+                >
+                  <span className={`${textMuted} shrink-0`}>
+                    {t.lblNodeDistribution}:
+                  </span>
+                  <span
+                    className={`flex items-center gap-1.5 font-bold text-right ${textPrimary}`}
+                  >
+                    <span
+                      className={`${zenType.caption} font-normal normal-case ${textMuted}`}
+                    >
+                      {mapExpanded ? t.mapScrollHint : t.mapExpandHint}
+                    </span>
+                    <span className={`${zenType.caption} ${textMuted}`} aria-hidden>
+                      {mapExpanded ? "▴" : "▾"}
+                    </span>
+                  </span>
+                </button>
+                {mapExpanded ? (
+                  <div id="mobile-node-map-panel" className="pt-2 pb-1 -mx-4">
+                    <Suspense fallback={null}>
+                      <NodeDistributionMap
+                        nodes={mapNodes}
+                        theme={theme}
+                        lang={lang}
+                        hideHeader
+                        embedded
+                      />
+                    </Suspense>
+                  </div>
+                ) : null}
+              </>
+            ) : null}
             </div>
           </div>
 
@@ -597,7 +695,7 @@ export function ConsoleHeader({
         <NodeDistributionMapModal
           open={mapOpen}
           onClose={() => setMapOpen(false)}
-          nodes={nodes}
+          nodes={mapNodes}
           theme={theme}
           lang={lang}
         />

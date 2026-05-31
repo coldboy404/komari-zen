@@ -54,7 +54,11 @@ export const NodeListProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const refresh = () => {
     setError(null);
-    call<unknown, Record<string, Record<string, unknown>>>("common:getNodes")
+    call<unknown, Record<string, Record<string, unknown>>>(
+      "common:getNodes",
+      undefined,
+      { timeout: 15000 },
+    )
       .then((result) => {
         if (!result || typeof result !== "object") {
           setNodeList([]);

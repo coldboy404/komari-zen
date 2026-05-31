@@ -49,6 +49,8 @@ export type Messages = {
   agentInfo: string;
   lblKomariVersion: string;
   lblCreatedAt: string;
+  lblExpiredAt: string;
+  lblRenewalPrice: string;
   lblLastUpdated: string;
   lblUptimeSec: string;
   lblCpuLoadUtil: string;
@@ -83,6 +85,7 @@ export type Messages = {
   unitHour: string;
   unitMin: string;
   unitDay: string;
+  unitSec: string;
   noHistory: string;
   tabMetrics: string;
   tabLatency: string;
@@ -121,11 +124,6 @@ export type Messages = {
   errorCheckEnv: string;
   lblLoadAvgShort: string;
   lblLoad1m: string;
-  trafficTypeSum: string;
-  trafficTypeMax: string;
-  trafficTypeMin: string;
-  trafficTypeUp: string;
-  trafficTypeDown: string;
   billingFree: string;
   billingExpired: string;
   billingLongTerm: string;
@@ -144,6 +142,7 @@ export type Messages = {
   privateRemark: string;
   lblNodeDistribution: string;
   mapScrollHint: string;
+  mapExpandHint: string;
   btnClose: string;
   mapRegionTooltip: (code: string, online: number, total: number) => string;
 };

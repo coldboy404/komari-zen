@@ -23,12 +23,23 @@ export const LiveDataProvider: React.FC<{ children: React.ReactNode }> = ({
     let running = false;
     const intervalMs = 2000;
 
+    const scheduleNext = () => {
+      if (stopped) return;
+      if (typeof document !== "undefined" && document.hidden) return;
+      timer = window.setTimeout(fetchLatest, intervalMs);
+    };
+
     const fetchLatest = async () => {
       if (running) return;
+      if (typeof document !== "undefined" && document.hidden) {
+        return;
+      }
       running = true;
       try {
         const result: Record<string, Record<string, unknown>> = await call(
           "common:getNodesLatestStatus",
+          undefined,
+          { timeout: 10000 },
         );
 
         const online = Object.values(result)
@@ -78,16 +89,24 @@ export const LiveDataProvider: React.FC<{ children: React.ReactNode }> = ({
         console.error("RPC2 获取最新状态失败:", e);
       } finally {
         running = false;
-        if (!stopped) {
-          timer = window.setTimeout(fetchLatest, intervalMs);
-        }
+        scheduleNext();
       }
     };
 
+    const onVisibilityChange = () => {
+      if (stopped || document.hidden) return;
+      if (timer) window.clearTimeout(timer);
+      if (!running) {
+        void fetchLatest();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
     fetchLatest();
 
     return () => {
       stopped = true;
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       if (timer) window.clearTimeout(timer);
     };
   }, [call]);

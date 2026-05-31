@@ -45,7 +45,8 @@ export function useChartScrub(
       if (!container || config.dataLength === 0) return;
       const svgEl = container.querySelector("svg");
       if (!svgEl) return;
-      setHoveredIndex(indexFromClientX(clientX, svgEl, config));
+      const nextIndex = indexFromClientX(clientX, svgEl, config);
+      setHoveredIndex((prev) => (prev === nextIndex ? prev : nextIndex));
     },
     [containerRef, config],
   );
@@ -113,7 +114,10 @@ export function useTimeChartScrub(
       if (!container || !config) return;
       const svgEl = container.querySelector("svg[data-chart-main]");
       if (!svgEl || !(svgEl instanceof SVGSVGElement)) return;
-      setHoveredTime(timeFromClientX(clientX, svgEl, config));
+      const nextTime = timeFromClientX(clientX, svgEl, config);
+      setHoveredTime((prev) =>
+        prev !== null && Math.abs(prev - nextTime) < 1 ? prev : nextTime,
+      );
     },
     [containerRef, config],
   );

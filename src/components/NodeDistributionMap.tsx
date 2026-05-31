@@ -13,6 +13,11 @@ import { zenType } from "@/lib/typography";
 import { zenPopover, zenText } from "@/lib/zenSemantics";
 import { zenMotion } from "@/lib/zenMotion";
 
+export type NodeDistributionMapNode = Pick<
+  VPSNode,
+  "id" | "name" | "flag" | "online"
+>;
+
 type RegionNode = {
   id: string;
   name: string;
@@ -37,11 +42,15 @@ type MapLayout = {
 };
 
 interface NodeDistributionMapProps {
-  nodes: VPSNode[];
+  nodes: NodeDistributionMapNode[];
   theme: "light" | "dark";
   lang: Lang;
   /** Inline section on mobile; modal body on desktop popup. */
   presentation?: "inline" | "modal";
+  /** Hide section title row (e.g. mobile collapsible inside header stats). */
+  hideHeader?: boolean;
+  /** Tighter layout when nested inside another panel. */
+  embedded?: boolean;
 }
 
 const MAP_W = worldMapData.w;
@@ -50,7 +59,7 @@ const DESKTOP_MQ = "(min-width: 768px)";
 /** Mobile map canvas width — wider than viewport, scroll to pan */
 const MOBILE_MAP_WIDTH = 720;
 
-function buildRegionClusters(nodes: VPSNode[]): RegionCluster[] {
+function buildRegionClusters(nodes: NodeDistributionMapNode[]): RegionCluster[] {
   const groups = new Map<
     string,
     { total: number; online: number; regionNodes: RegionNode[] }
@@ -103,6 +112,17 @@ function computeMapLayout(rect: DOMRect): MapLayout {
   };
 }
 
+function mapLayoutsEqual(a: MapLayout | null, b: MapLayout): boolean {
+  return (
+    a !== null &&
+    Math.abs(a.width - b.width) < 0.5 &&
+    Math.abs(a.height - b.height) < 0.5 &&
+    Math.abs(a.scale - b.scale) < 0.001 &&
+    Math.abs(a.offsetX - b.offsetX) < 0.5 &&
+    Math.abs(a.offsetY - b.offsetY) < 0.5
+  );
+}
+
 function mapPointToScreen(
   x: number,
   y: number,
@@ -117,11 +137,13 @@ function mapPointToScreen(
 function drawDotLayer(
   canvas: HTMLCanvasElement,
   theme: "light" | "dark",
+  density: "full" | "compact",
 ): void {
   const rect = canvas.getBoundingClientRect();
   if (rect.width <= 0 || rect.height <= 0) return;
 
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const dpr =
+    density === "compact" ? 1 : Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = Math.round(rect.width * dpr);
   canvas.height = Math.round(rect.height * dpr);
 
@@ -135,16 +157,31 @@ function drawDotLayer(
 
   ctx.fillStyle =
     theme === "dark" ? "rgba(115, 115, 115, 0.55)" : "rgba(163, 163, 163, 0.65)";
-  const radius = Math.max(0.75, layout.scale * 0.95);
+  const radius =
+    density === "compact"
+      ? Math.max(0.7, layout.scale * 0.8)
+      : Math.max(0.75, layout.scale * 0.95);
+  const step = density === "compact" ? 4 : 2;
 
   const { dots } = worldMapData;
-  for (let i = 0; i < dots.length; i += 2) {
+  if (density === "compact") {
+    const size = Math.max(1, radius * 1.35);
+    for (let i = 0; i < dots.length; i += step) {
+      const x = layout.offsetX + dots[i] * layout.scale;
+      const y = layout.offsetY + dots[i + 1] * layout.scale;
+      ctx.fillRect(x - size / 2, y - size / 2, size, size);
+    }
+    return;
+  }
+
+  ctx.beginPath();
+  for (let i = 0; i < dots.length; i += step) {
     const x = layout.offsetX + dots[i] * layout.scale;
     const y = layout.offsetY + dots[i + 1] * layout.scale;
-    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
     ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fill();
   }
+  ctx.fill();
 }
 
 function RegionClusterPanel({
@@ -213,6 +250,8 @@ export const NodeDistributionMap = React.memo(function NodeDistributionMap({
   theme,
   lang,
   presentation = "inline",
+  hideHeader = false,
+  embedded = false,
 }: NodeDistributionMapProps) {
   const isModal = presentation === "modal";
   const containerRef = useRef<HTMLDivElement>(null);
@@ -226,6 +265,7 @@ export const NodeDistributionMap = React.memo(function NodeDistributionMap({
     () => typeof window !== "undefined" && window.matchMedia(DESKTOP_MQ).matches,
   );
   const clusters = useMemo(() => buildRegionClusters(nodes), [nodes]);
+  const effectiveDesktop = isModal || isDesktop;
 
   useEffect(() => {
     const mq = window.matchMedia(DESKTOP_MQ);
@@ -247,85 +287,48 @@ export const NodeDistributionMap = React.memo(function NodeDistributionMap({
     scroller.scrollLeft = center;
   }, [isDesktop, clusters.length]);
 
-  /** Mobile: horizontal pan for the map; vertical swipes scroll the page. */
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el || isDesktop) return;
-
-    let startX = 0;
-    let startY = 0;
-    let lastX = 0;
-    let axis: "x" | "y" | null = null;
-    const THRESHOLD = 6;
-
-    const reset = () => {
-      axis = null;
-    };
-
-    const onTouchStart = (e: TouchEvent) => {
-      if (e.touches.length !== 1) return;
-      startX = lastX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
-      axis = null;
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      if (e.touches.length !== 1) return;
-      const touch = e.touches[0];
-      const x = touch.clientX;
-      const y = touch.clientY;
-
-      if (axis === null) {
-        const dx = Math.abs(x - startX);
-        const dy = Math.abs(y - startY);
-        if (dx < THRESHOLD && dy < THRESHOLD) return;
-        axis = dx > dy ? "x" : "y";
-      }
-
-      if (axis === "y") return;
-
-      e.preventDefault();
-      el.scrollLeft += lastX - x;
-      lastX = x;
-    };
-
-    el.addEventListener("touchstart", onTouchStart, { passive: true });
-    el.addEventListener("touchmove", onTouchMove, { passive: false });
-    el.addEventListener("touchend", reset);
-    el.addEventListener("touchcancel", reset);
-
-    return () => {
-      el.removeEventListener("touchstart", onTouchStart);
-      el.removeEventListener("touchmove", onTouchMove);
-      el.removeEventListener("touchend", reset);
-      el.removeEventListener("touchcancel", reset);
-    };
-  }, [isDesktop]);
-
   useEffect(() => {
     const container = containerRef.current;
     const canvas = canvasRef.current;
     if (!container || !canvas) return;
+    let raf = 0;
 
     const refresh = () => {
       const rect = container.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) {
-        setMapLayout(computeMapLayout(rect));
+      if (rect.width <= 0 || rect.height <= 0) return;
+
+      if (effectiveDesktop) {
+        const nextLayout = computeMapLayout(rect);
+        setMapLayout((prev) =>
+          mapLayoutsEqual(prev, nextLayout) ? prev : nextLayout,
+        );
+      } else {
+        setMapLayout(null);
       }
-      drawDotLayer(canvas, theme);
+      drawDotLayer(canvas, theme, effectiveDesktop ? "full" : "compact");
+    };
+
+    const scheduleRefresh = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => {
+        raf = 0;
+        refresh();
+      });
     };
 
     refresh();
-    const ro = new ResizeObserver(refresh);
+    const ro = new ResizeObserver(scheduleRefresh);
     ro.observe(container);
-    return () => ro.disconnect();
-  }, [theme, isDesktop]);
+    return () => {
+      ro.disconnect();
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, [theme, effectiveDesktop]);
 
   const t = translations[lang];
   const textMuted = zenText.subtle;
   const markerFillOnline = "var(--zen-accent)";
   const markerFillOffline = theme === "dark" ? "#737373" : "#a3a3a3";
-  const effectiveDesktop = isModal || isDesktop;
 
   if (clusters.length === 0) return null;
 
@@ -362,10 +365,16 @@ export const NodeDistributionMap = React.memo(function NodeDistributionMap({
 
   return (
     <section
-      aria-label={isModal ? undefined : t.lblNodeDistribution}
-      className={isModal ? "w-full" : "w-full max-md:-mx-4 max-md:w-[calc(100%+2rem)]"}
+      aria-label={isModal || hideHeader ? undefined : t.lblNodeDistribution}
+      className={
+        isModal
+          ? "w-full"
+          : embedded
+            ? "w-full"
+            : "w-full max-md:-mx-4 max-md:w-[calc(100%+2rem)]"
+      }
     >
-      {!isModal ? (
+      {!isModal && !hideHeader ? (
         <div className="flex items-center gap-3 mb-1 md:mb-2.5 max-md:px-4">
           <span
             className={`${zenType.section} zen-track-tight ${textMuted} font-mono uppercase shrink-0`}
@@ -404,7 +413,7 @@ export const NodeDistributionMap = React.memo(function NodeDistributionMap({
           className={
             isModal
               ? undefined
-              : "max-md:overflow-x-auto max-md:overscroll-x-contain max-md:snap-x max-md:snap-mandatory max-md:touch-pan-y max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden"
+              : "max-md:overflow-x-auto max-md:overscroll-x-contain max-md:snap-x max-md:snap-mandatory max-md:touch-auto max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden"
           }
         >
           <div
@@ -431,23 +440,25 @@ export const NodeDistributionMap = React.memo(function NodeDistributionMap({
           role="img"
           aria-label={t.lblNodeDistribution}
         >
-          <defs>
-            <filter id="zen-map-glow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="1.8" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
+          {effectiveDesktop ? (
+            <defs>
+              <filter id="zen-map-glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="1.8" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+          ) : null}
 
           {clusters.map((cluster, index) => {
             const hasOnline = cluster.online > 0;
             const fill = hasOnline ? markerFillOnline : markerFillOffline;
-            const r = effectiveDesktop ? 5 : 6.5;
+            const r = effectiveDesktop ? 5 : 5.5;
             const isTapped = tapped?.code === cluster.code;
             const twinkleDelay = `${((index * 0.83) % 3.6).toFixed(2)}s`;
-            const hitRadius = effectiveDesktop ? 14 : 26;
+            const hitRadius = effectiveDesktop ? 14 : 24;
 
             return (
               <g
@@ -464,7 +475,7 @@ export const NodeDistributionMap = React.memo(function NodeDistributionMap({
                   aria-hidden
                 />
                 <g transform={`translate(${cluster.x} ${cluster.y})`}>
-                  {hasOnline ? (
+                  {effectiveDesktop && hasOnline ? (
                     <>
                       <circle
                         cx={0}
@@ -491,9 +502,13 @@ export const NodeDistributionMap = React.memo(function NodeDistributionMap({
                     cy={0}
                     r={isTapped ? r + 1.5 : r}
                     fill={fill}
-                    className={hasOnline ? "zen-map-star-core" : undefined}
+                    className={
+                      effectiveDesktop && hasOnline
+                        ? "zen-map-star-core"
+                        : undefined
+                    }
                     style={
-                      hasOnline
+                      effectiveDesktop && hasOnline
                         ? { animationDelay: `calc(${twinkleDelay} + 0.28s)` }
                         : undefined
                     }
@@ -527,6 +542,43 @@ export const NodeDistributionMap = React.memo(function NodeDistributionMap({
       ) : null}
     </section>
   );
-});
+}, areNodeDistributionMapPropsEqual);
 
 NodeDistributionMap.displayName = "NodeDistributionMap";
+
+function areMapNodesEqual(
+  prev: NodeDistributionMapNode[],
+  next: NodeDistributionMapNode[],
+): boolean {
+  if (prev === next) return true;
+  if (prev.length !== next.length) return false;
+
+  for (let i = 0; i < prev.length; i += 1) {
+    const a = prev[i];
+    const b = next[i];
+    if (
+      a.id !== b.id ||
+      a.name !== b.name ||
+      a.flag !== b.flag ||
+      a.online !== b.online
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function areNodeDistributionMapPropsEqual(
+  prev: NodeDistributionMapProps,
+  next: NodeDistributionMapProps,
+): boolean {
+  return (
+    prev.theme === next.theme &&
+    prev.lang === next.lang &&
+    prev.presentation === next.presentation &&
+    prev.hideHeader === next.hideHeader &&
+    prev.embedded === next.embedded &&
+    areMapNodesEqual(prev.nodes, next.nodes)
+  );
+}

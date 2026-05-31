@@ -7,13 +7,14 @@ import {
   formatLatencyMs,
   formatLatencyTooltipTime,
   latencyBlockColor,
-  METRIC_BAR_SEGMENTS,
-  metricWidgetClass,
+  latencyBlockFillClass,
   LATENCY_HISTORY_LEN,
+  metricWidgetGridClass,
   padLatencyHistory,
 } from "@/lib/latencyDisplay";
+import { MetricBarTrack } from "@/components/MetricSegmentBar";
 import { zenType } from "@/lib/typography";
-import { zenInteractive, zenPopover } from "@/lib/zenSemantics";
+import { zenPopover } from "@/lib/zenSemantics";
 import { zenMotion } from "@/lib/zenMotion";
 
 interface LatencyHistoryBlocksProps {
@@ -24,6 +25,8 @@ interface LatencyHistoryBlocksProps {
   colorConfig: LatencyColorConfig;
   /** Extra classes on the outer wrapper (e.g. card row alignment). */
   className?: string;
+  /** Open full latency probe panel (e.g. from node table). */
+  onValueClick?: () => void;
 }
 
 const VIEWPORT_PAD = 8;
@@ -60,23 +63,23 @@ type LatencyBlockProps = {
   theme: "light" | "dark";
   colorConfig: LatencyColorConfig;
   mean: number | null;
+  setTriggerRef: (el: HTMLSpanElement | null) => void;
+  onShow: () => void;
+  onHide: () => void;
+  onTogglePinned: (event: React.MouseEvent | React.KeyboardEvent) => void;
 };
-
-const SLOT_WIDTH_CH = METRIC_BAR_SEGMENTS / LATENCY_HISTORY_LEN;
 
 function LatencyBlock({
   sample,
   theme,
   colorConfig,
   mean,
+  setTriggerRef,
+  onShow,
+  onHide,
+  onTogglePinned,
 }: LatencyBlockProps) {
   const hasData = sample.ms > 0 && sample.t > 0;
-  const triggerRef = React.useRef<HTMLSpanElement>(null);
-  const panelRef = React.useRef<HTMLDivElement>(null);
-  const [open, setOpen] = React.useState(false);
-  const [pinned, setPinned] = React.useState(false);
-  const [coords, setCoords] = React.useState({ top: 0, left: 0 });
-  const [visible, setVisible] = React.useState(false);
 
   const tipText = React.useMemo(() => {
     if (!hasData) return "";
@@ -87,26 +90,109 @@ function LatencyBlock({
     return tip;
   }, [hasData, sample.t, sample.ms, colorConfig.mode, mean]);
 
+  const fillClass = hasData
+    ? latencyBlockFillClass(sample.ms, theme, colorConfig, mean)
+    : "bg-zen-fill-muted/55";
+
+  return (
+    <span
+      ref={setTriggerRef}
+      role={hasData ? "button" : undefined}
+      tabIndex={hasData ? 0 : undefined}
+      aria-label={hasData ? tipText : undefined}
+      className={`flex h-full min-w-0 items-end ${hasData ? "cursor-pointer" : "cursor-default"}`}
+      onMouseEnter={hasData ? onShow : undefined}
+      onMouseLeave={hasData ? onHide : undefined}
+      onFocus={hasData ? onShow : undefined}
+      onBlur={hasData ? onHide : undefined}
+      onClick={hasData ? onTogglePinned : undefined}
+      onKeyDown={
+        hasData
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onTogglePinned(event);
+              }
+            }
+          : undefined
+      }
+    >
+      <span
+        aria-hidden
+        className={`block w-full min-h-[2px] rounded-[0.5px] ${fillClass} ${
+          hasData ? "h-[85%]" : "h-[45%]"
+        }`}
+      />
+    </span>
+  );
+}
+
+type ActiveTooltip = {
+  index: number;
+  pinned: boolean;
+};
+
+function buildTipText(
+  sample: LatencySample | undefined,
+  colorConfig: LatencyColorConfig,
+  mean: number | null,
+): string {
+  if (!sample || sample.ms <= 0 || sample.t <= 0) return "";
+  let tip = `${formatLatencyTooltipTime(sample.t)} · ${formatLatencyMs(sample.ms)}`;
+  if (colorConfig.mode === "MeanDelta" && mean != null && mean > 0) {
+    tip += ` (${formatLatencyDelta(sample.ms - mean)})`;
+  }
+  return tip;
+}
+
+function isLatencySampleVisible(sample: LatencySample | undefined): boolean {
+  return !!sample && sample.ms > 0 && sample.t > 0;
+}
+
+function LatencyTooltipPortal({
+  active,
+  blocks,
+  colorConfig,
+  mean,
+  triggerRefs,
+  onClose,
+}: {
+  active: ActiveTooltip | null;
+  blocks: LatencySample[];
+  colorConfig: LatencyColorConfig;
+  mean: number | null;
+  triggerRefs: React.MutableRefObject<(HTMLSpanElement | null)[]>;
+  onClose: () => void;
+}) {
+  const panelRef = React.useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = React.useState({ top: 0, left: 0 });
+  const [visible, setVisible] = React.useState(false);
+  const sample = active ? blocks[active.index] : undefined;
+  const tipText = React.useMemo(
+    () => buildTipText(sample, colorConfig, mean),
+    [sample, colorConfig, mean],
+  );
   const panelClass = zenPopover;
 
   const reposition = React.useCallback(() => {
-    const trigger = triggerRef.current;
+    if (!active) return;
+    const trigger = triggerRefs.current[active.index];
     const panel = panelRef.current;
     if (!trigger || !panel) return;
     setCoords(computeTooltipCoords(trigger, panel));
     setVisible(true);
-  }, []);
+  }, [active, triggerRefs]);
 
   React.useLayoutEffect(() => {
-    if (!open) {
+    if (!active || !tipText) {
       setVisible(false);
       return;
     }
     reposition();
-  }, [open, tipText, reposition]);
+  }, [active, tipText, reposition]);
 
   React.useEffect(() => {
-    if (!open) return;
+    if (!active) return;
     const onReflow = () => reposition();
     window.addEventListener("resize", onReflow);
     window.addEventListener("scroll", onReflow, true);
@@ -114,98 +200,50 @@ function LatencyBlock({
       window.removeEventListener("resize", onReflow);
       window.removeEventListener("scroll", onReflow, true);
     };
-  }, [open, reposition]);
+  }, [active, reposition]);
 
   React.useEffect(() => {
-    if (!pinned) return;
+    if (!active?.pinned) return;
     const onDoc = (e: MouseEvent) => {
       const target = e.target as Node;
       if (
-        triggerRef.current?.contains(target) ||
+        triggerRefs.current[active.index]?.contains(target) ||
         panelRef.current?.contains(target)
       ) {
         return;
       }
-      setPinned(false);
-      setOpen(false);
+      onClose();
     };
     document.addEventListener("click", onDoc, true);
     return () => document.removeEventListener("click", onDoc, true);
-  }, [pinned]);
+  }, [active, onClose, triggerRefs]);
 
-  const showPanel = () => setOpen(true);
-  const hidePanel = () => {
-    if (!pinned) setOpen(false);
-  };
+  if (!active || !tipText) return null;
 
-  const onClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!hasData) return;
-    setPinned((prev) => {
-      const next = !prev;
-      setOpen(next);
-      return next;
-    });
-  };
-
-  const colorClass = hasData
-    ? latencyBlockColor(sample.ms, theme, colorConfig, mean)
-    : "";
-
-  return (
-    <>
-      <span
-        ref={triggerRef}
-        role={hasData ? "button" : undefined}
-        tabIndex={hasData ? 0 : undefined}
-        aria-label={hasData ? tipText : undefined}
-        className={`inline-flex shrink-0 items-end justify-center overflow-hidden leading-none ${
-          hasData ? `cursor-pointer ${colorClass}` : "cursor-default text-zen-fg-faint/80"
-        }`}
-        style={{ width: `${SLOT_WIDTH_CH}ch`, height: "1em" }}
-        onMouseEnter={hasData ? showPanel : undefined}
-        onMouseLeave={hasData ? hidePanel : undefined}
-        onFocus={hasData ? showPanel : undefined}
-        onBlur={hasData ? hidePanel : undefined}
-        onClick={onClick}
-      >
-        {hasData ? (
-          <span
-            aria-hidden
-            className="block w-full rounded-[0.5px] bg-current"
-            style={{ height: "0.52em" }}
-          />
-        ) : (
-          <span aria-hidden className="text-[0.65em] leading-none">
-            ·
-          </span>
-        )}
-      </span>
-      {hasData &&
-        open &&
-        createPortal(
-          <div
-            ref={panelRef}
-            role="tooltip"
-            style={{
-              position: "fixed",
-              top: coords.top,
-              left: coords.left,
-              zIndex: 9999,
-              pointerEvents: pinned ? "auto" : "none",
-            }}
-            className={`whitespace-nowrap rounded-sm px-2 py-1 font-mono ${zenType.caption} tracking-wide ${panelClass} ${zenMotion.popover} ${visible ? zenMotion.popoverVisible : ""}`}
-            onMouseEnter={showPanel}
-            onMouseLeave={hidePanel}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {tipText}
-          </div>,
-          document.body,
-        )}
-    </>
+  return createPortal(
+    <div
+      ref={panelRef}
+      role="tooltip"
+      style={{
+        position: "fixed",
+        top: coords.top,
+        left: coords.left,
+        zIndex: 9999,
+        pointerEvents: active.pinned ? "auto" : "none",
+      }}
+      className={`whitespace-nowrap rounded-sm px-2 py-1 font-mono ${zenType.caption} tracking-wide ${panelClass} ${zenMotion.popover} ${visible ? zenMotion.popoverVisible : ""}`}
+      onMouseLeave={() => {
+        if (!active.pinned) onClose();
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {tipText}
+    </div>,
+    document.body,
   );
 }
+
+const MemoLatencyBlock = React.memo(LatencyBlock);
 
 export function LatencyHistoryBlocks({
   samples,
@@ -214,9 +252,49 @@ export function LatencyHistoryBlocks({
   textPrimary,
   colorConfig,
   className = "",
+  onValueClick,
 }: LatencyHistoryBlocksProps) {
-  const blocks = padLatencyHistory(samples);
-  const mean = computeLatencyMean(blocks);
+  const blocks = React.useMemo(() => padLatencyHistory(samples), [samples]);
+  const mean = React.useMemo(() => computeLatencyMean(blocks), [blocks]);
+  const triggerRefs = React.useRef<(HTMLSpanElement | null)[]>([]);
+  const [activeTooltip, setActiveTooltip] =
+    React.useState<ActiveTooltip | null>(null);
+
+  React.useEffect(() => {
+    triggerRefs.current.length = blocks.length;
+  }, [blocks.length]);
+
+  React.useEffect(() => {
+    setActiveTooltip((active) =>
+      active && isLatencySampleVisible(blocks[active.index]) ? active : null,
+    );
+  }, [blocks]);
+
+  const closeTooltip = React.useCallback(() => {
+    setActiveTooltip(null);
+  }, []);
+
+  const hideTooltip = React.useCallback(() => {
+    setActiveTooltip((active) => (active?.pinned ? active : null));
+  }, []);
+
+  const showTooltip = React.useCallback((index: number) => {
+    setActiveTooltip({ index, pinned: false });
+  }, []);
+
+  const togglePinnedTooltip = React.useCallback(
+    (index: number, event: React.MouseEvent | React.KeyboardEvent) => {
+      event.stopPropagation();
+      if (!isLatencySampleVisible(blocks[index])) return;
+      setActiveTooltip((active) =>
+        active?.index === index && active.pinned
+          ? null
+          : { index, pinned: true },
+      );
+    },
+    [blocks],
+  );
+
   const valueColor =
     currentMs > 0
       ? latencyBlockColor(currentMs, theme, colorConfig, mean)
@@ -224,27 +302,69 @@ export function LatencyHistoryBlocks({
   const valueLabel = formatLatencyMs(currentMs);
 
   return (
-    <span className={`${metricWidgetClass} ${className}`.trim()}>
-      <span className={`text-right font-bold ${valueColor}`}>{valueLabel}</span>
-      <span className={`whitespace-nowrap ${zenInteractive.separator}`}>
-        {"["}
+    <span className={`${metricWidgetGridClass} ${className}`.trim()}>
+      <span
+        role={onValueClick && currentMs > 0 ? "button" : undefined}
+        tabIndex={onValueClick && currentMs > 0 ? 0 : undefined}
+        className={`text-right font-bold tabular-nums ${valueColor} ${
+          onValueClick && currentMs > 0
+            ? "cursor-pointer hover:opacity-80 transition-opacity"
+            : ""
+        }`}
+        onClick={
+          onValueClick && currentMs > 0
+            ? (e) => {
+                e.stopPropagation();
+                onValueClick();
+              }
+            : undefined
+        }
+        onKeyDown={
+          onValueClick && currentMs > 0
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onValueClick();
+                }
+              }
+            : undefined
+        }
+      >
+        {valueLabel}
+      </span>
+      <MetricBarTrack>
         <span
-          className="inline-flex items-baseline"
-          style={{ width: `${METRIC_BAR_SEGMENTS}ch` }}
+          className="grid h-full w-full gap-px"
+          style={{
+            gridTemplateColumns: `repeat(${LATENCY_HISTORY_LEN}, minmax(0, 1fr))`,
+          }}
         >
           {blocks.map((sample, i) => (
-            <React.Fragment key={`${sample.t}-${i}`}>
-              <LatencyBlock
-                sample={sample}
-                theme={theme}
-                colorConfig={colorConfig}
-                mean={mean}
-              />
-            </React.Fragment>
+            <MemoLatencyBlock
+              key={`${sample.t}-${i}`}
+              sample={sample}
+              theme={theme}
+              colorConfig={colorConfig}
+              mean={mean}
+              setTriggerRef={(el) => {
+                triggerRefs.current[i] = el;
+              }}
+              onShow={() => showTooltip(i)}
+              onHide={hideTooltip}
+              onTogglePinned={(event) => togglePinnedTooltip(i, event)}
+            />
           ))}
         </span>
-        {"]"}
-      </span>
+      </MetricBarTrack>
+      <LatencyTooltipPortal
+        active={activeTooltip}
+        blocks={blocks}
+        colorConfig={colorConfig}
+        mean={mean}
+        triggerRefs={triggerRefs}
+        onClose={closeTooltip}
+      />
     </span>
   );
 }

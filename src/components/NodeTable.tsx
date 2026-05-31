@@ -27,10 +27,9 @@ import { OsIcon } from "@/components/OsIcon";
 import { NodeTags } from "@/components/NodeTags";
 import { PublicRemarkButton } from "@/components/PublicRemarkButton";
 import { LatencyHistoryBlocks } from "@/components/LatencyHistoryBlocks";
-import {
-  METRIC_BAR_SEGMENTS,
-  metricWidgetClass,
-} from "@/lib/latencyDisplay";
+import { LatencyProbeModal } from "@/components/LatencyProbeModal";
+import { MetricPercentBar } from "@/components/MetricSegmentBar";
+import { metricPercentFillClass } from "@/lib/latencyDisplay";
 import { zenType, zenTouch } from "@/lib/typography";
 import { zenBorder, zenFill, zenInteractive, zenText } from "@/lib/zenSemantics";
 import { zenMotion } from "@/lib/zenMotion";
@@ -91,18 +90,13 @@ function MetricAsciiBar({
   colorClass: string;
   textPrimaryClass: string;
 }) {
-  const filled = Math.round((percent / 100) * METRIC_BAR_SEGMENTS);
-  const empty = Math.max(0, METRIC_BAR_SEGMENTS - filled);
   return (
-    <span className={`${metricWidgetClass} ${textPrimaryClass}`}>
-      <span className={`text-right font-bold ${colorClass}`}>{percent.toFixed(1)}%</span>
-      <span className={`whitespace-nowrap ${zenInteractive.separator}`}>
-        {"["}
-        <span className={colorClass}>{"■".repeat(filled)}</span>
-        {"·".repeat(empty)}
-        {"]"}
-      </span>
-    </span>
+    <MetricPercentBar
+      percent={percent}
+      valueClassName={colorClass}
+      fillClassName={metricPercentFillClass(colorClass)}
+      textPrimaryClass={textPrimaryClass}
+    />
   );
 }
 
@@ -132,6 +126,7 @@ export function NodeTable({
     defaultSortOrder === "Descending" ? "desc" : "asc";
 
   const [activeGroup, setActiveGroup] = useState<string>(ALL_NODE_GROUP);
+  const [latencyModalNode, setLatencyModalNode] = useState<VPSNode | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [sortField, setSortField] = useState<SortField>(initialSortField);
   const [sortOrder, setSortOrder] = useState<SortOrder>(initialSortOrder);
@@ -205,31 +200,42 @@ export function NodeTable({
 
   const formatSpeed = (kbps: number) => formatKbps(kbps);
 
-  const trafficTypeLabels = {
-    sum: t.trafficTypeSum,
-    max: t.trafficTypeMax,
-    min: t.trafficTypeMin,
-    up: t.trafficTypeUp,
-    down: t.trafficTypeDown,
-  };
-
-  const billingLabels: BillingLabels = {
-    unitDays: t.unitDays,
-    billingFree: t.billingFree,
-    billingExpired: t.billingExpired,
-    billingLongTerm: t.billingLongTerm,
-    billingNoInfo: t.billingNoInfo,
-    billingHidden: t.billingHidden,
-    billingMonthly: t.billingMonthly,
-    billingQuarterly: t.billingQuarterly,
-    billingSemiAnnual: t.billingSemiAnnual,
-    billingAnnual: t.billingAnnual,
-    billingBiennial: t.billingBiennial,
-    billingTriennial: t.billingTriennial,
-    billingQuinquennial: t.billingQuinquennial,
-    billingOnce: t.billingOnce,
-    billingCycleDays: t.billingCycleDays,
-  };
+  const billingLabels: BillingLabels = useMemo(
+    () => ({
+      unitDays: t.unitDays,
+      billingFree: t.billingFree,
+      billingExpired: t.billingExpired,
+      billingLongTerm: t.billingLongTerm,
+      billingNoInfo: t.billingNoInfo,
+      billingHidden: t.billingHidden,
+      billingMonthly: t.billingMonthly,
+      billingQuarterly: t.billingQuarterly,
+      billingSemiAnnual: t.billingSemiAnnual,
+      billingAnnual: t.billingAnnual,
+      billingBiennial: t.billingBiennial,
+      billingTriennial: t.billingTriennial,
+      billingQuinquennial: t.billingQuinquennial,
+      billingOnce: t.billingOnce,
+      billingCycleDays: t.billingCycleDays,
+    }),
+    [
+      t.unitDays,
+      t.billingFree,
+      t.billingExpired,
+      t.billingLongTerm,
+      t.billingNoInfo,
+      t.billingHidden,
+      t.billingMonthly,
+      t.billingQuarterly,
+      t.billingSemiAnnual,
+      t.billingAnnual,
+      t.billingBiennial,
+      t.billingTriennial,
+      t.billingQuinquennial,
+      t.billingOnce,
+      t.billingCycleDays,
+    ],
+  );
 
   const renderBilling = (node: VPSNode) => {
     const billing = formatNodeBilling(
@@ -263,7 +269,7 @@ export function NodeTable({
         <span
           className={`inline-flex shrink-0 px-1 py-px rounded-sm ${zenType.micro} font-bold tracking-wide leading-none ${trafficTypeBadgeClass}`}
         >
-          {getTrafficTypeLabel(node.trafficLimitType, trafficTypeLabels)}
+          {getTrafficTypeLabel(node.trafficLimitType)}
         </span>
       )}
     </span>
@@ -313,18 +319,19 @@ export function NodeTable({
 
   // Filter & Search
   const filteredNodes = useMemo(() => {
+    const lowerSearch = searchTerm.trim().toLowerCase();
     return nodes.filter((node) => {
       const matchGroup =
         activeGroup === ALL_NODE_GROUP || node.nodeGroup === activeGroup;
-      const lowerSearch = searchTerm.toLowerCase();
-      const matchSearch =
-        node.name.toLowerCase().includes(lowerSearch) ||
-        node.location.toLowerCase().includes(lowerSearch) ||
-        node.os.toLowerCase().includes(lowerSearch) ||
-        node.provider.toLowerCase().includes(lowerSearch) ||
-        node.tags.toLowerCase().includes(lowerSearch) ||
-        node.publicRemark.toLowerCase().includes(lowerSearch) ||
-        node.privateRemark.toLowerCase().includes(lowerSearch);
+      const matchSearch = lowerSearch
+        ? node.name.toLowerCase().includes(lowerSearch) ||
+          node.location.toLowerCase().includes(lowerSearch) ||
+          node.os.toLowerCase().includes(lowerSearch) ||
+          node.provider.toLowerCase().includes(lowerSearch) ||
+          node.tags.toLowerCase().includes(lowerSearch) ||
+          node.publicRemark.toLowerCase().includes(lowerSearch) ||
+          node.privateRemark.toLowerCase().includes(lowerSearch)
+        : true;
       return matchGroup && matchSearch;
     });
   }, [nodes, activeGroup, searchTerm]);
@@ -341,7 +348,7 @@ export function NodeTable({
     (showExpiryTime ? 1 : 0) +
     7;
 
-  const handleSort = (field: SortField) => {
+  const handleSort = useCallback((field: SortField) => {
     userSortedRef.current = true;
     if (sortField === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -349,7 +356,7 @@ export function NodeTable({
       setSortField(field);
       setSortOrder("desc"); // Default to desc for performance metrics
     }
-  };
+  }, [sortField, sortOrder]);
 
   const getSortOrderIcon = (order: SortOrder) => (order === "asc" ? "▲" : "▼");
 
@@ -502,6 +509,10 @@ export function NodeTable({
       </div>
     </div>
   );
+
+  const openLatencyModal = useCallback((node: VPSNode) => {
+    setLatencyModalNode(node);
+  }, []);
 
   return (
     <div className={`w-full space-y-6 lg:space-y-8 font-sans ${zenType.body} ${zenText.primary}`}>
@@ -805,6 +816,7 @@ export function NodeTable({
                             theme={theme}
                             textPrimary={textPrimary}
                             colorConfig={latencyColorConfig}
+                            onValueClick={() => openLatencyModal(node)}
                           />
                         ) : (
                           <span className={textMuted}>—</span>
@@ -974,6 +986,7 @@ export function NodeTable({
                           theme={theme}
                           textPrimary={textPrimary}
                           colorConfig={latencyColorConfig}
+                          onValueClick={() => openLatencyModal(node)}
                         />
                       ) : (
                         <span>—</span>
@@ -1014,6 +1027,16 @@ export function NodeTable({
           )}
         </div>
       )}
+
+      {latencyVisible ? (
+        <LatencyProbeModal
+          open={latencyModalNode != null}
+          onClose={() => setLatencyModalNode(null)}
+          node={latencyModalNode}
+          theme={theme}
+          lang={lang}
+        />
+      ) : null}
     </div>
   );
 }

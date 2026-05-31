@@ -26,6 +26,8 @@ type ZenTabControlProps = {
   idleClassName?: string;
   separator?: React.ReactNode;
   scrollable?: boolean;
+  /** Sliding underline or pill highlight. Off for section-title style tabs. */
+  showIndicator?: boolean;
 };
 
 export const ZenTabControl = forwardRef<HTMLDivElement, ZenTabControlProps>(
@@ -41,13 +43,14 @@ export const ZenTabControl = forwardRef<HTMLDivElement, ZenTabControlProps>(
       idleClassName = "",
       separator,
       scrollable = false,
+      showIndicator = true,
     },
     forwardedRef,
   ) {
   const { rootRef, register, rect } = useSlidingIndicator(value);
 
   const indicator =
-    rect && rect.width > 0 ? (
+    showIndicator && rect && rect.width > 0 ? (
       <span
         aria-hidden
         className={
