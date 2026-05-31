@@ -108,10 +108,14 @@ export type Messages = {
   pingNoTasks: string;
   pingLatencyDetection: string;
   pingSmooth: string;
+  pingConnectBreakpoints: string;
   pingActiveProbes: string;
   pingProbeFilter: string;
   pingVolatility: string;
   pingShowAll: string;
+  pingResetZoom: string;
+  pingOverviewAria: string;
+  pingDataGap: string;
   loadingNodes: string;
   errorLoadNodes: string;
   errorCheckEnv: string;

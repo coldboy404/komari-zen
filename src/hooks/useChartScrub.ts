@@ -1,10 +1,18 @@
 import React from "react";
+import type { TimeRange } from "@/hooks/usePingChartViewport";
 
 export type ChartScrubConfig = {
   width: number;
   paddingX: number;
   chartWidth: number;
   dataLength: number;
+};
+
+export type TimeChartScrubConfig = {
+  width: number;
+  paddingX: number;
+  chartWidth: number;
+  viewRange: TimeRange;
 };
 
 export function indexFromClientX(
@@ -68,6 +76,74 @@ export function useChartScrub(
   return {
     hoveredIndex,
     setHoveredIndex,
+    onMouseMove,
+    onMouseLeave,
+    onTouchStart,
+    onTouchMove,
+    onTouchEnd,
+  };
+}
+
+export function timeFromClientX(
+  clientX: number,
+  svgEl: SVGSVGElement,
+  config: TimeChartScrubConfig,
+): number {
+  const { width, paddingX, chartWidth, viewRange } = config;
+  const [start, end] = viewRange;
+  const span = Math.max(1, end - start);
+
+  const svgRect = svgEl.getBoundingClientRect();
+  const x = clientX - svgRect.left;
+  const svgX = (x / svgRect.width) * width;
+  const ratio = (svgX - paddingX) / chartWidth;
+  const clamped = Math.max(0, Math.min(1, ratio));
+  return start + clamped * span;
+}
+
+export function useTimeChartScrub(
+  containerRef: React.RefObject<HTMLElement | null>,
+  config: TimeChartScrubConfig | null,
+) {
+  const [hoveredTime, setHoveredTime] = React.useState<number | null>(null);
+
+  const updateFromClientX = React.useCallback(
+    (clientX: number) => {
+      const container = containerRef.current;
+      if (!container || !config) return;
+      const svgEl = container.querySelector("svg[data-chart-main]");
+      if (!svgEl || !(svgEl instanceof SVGSVGElement)) return;
+      setHoveredTime(timeFromClientX(clientX, svgEl, config));
+    },
+    [containerRef, config],
+  );
+
+  const onMouseMove = React.useCallback(
+    (e: React.MouseEvent) => updateFromClientX(e.clientX),
+    [updateFromClientX],
+  );
+
+  const onMouseLeave = React.useCallback(() => setHoveredTime(null), []);
+
+  const onTouchStart = React.useCallback(
+    (e: React.TouchEvent) => {
+      if (e.touches[0]) updateFromClientX(e.touches[0].clientX);
+    },
+    [updateFromClientX],
+  );
+
+  const onTouchMove = React.useCallback(
+    (e: React.TouchEvent) => {
+      if (e.touches[0]) updateFromClientX(e.touches[0].clientX);
+    },
+    [updateFromClientX],
+  );
+
+  const onTouchEnd = React.useCallback(() => setHoveredTime(null), []);
+
+  return {
+    hoveredTime,
+    setHoveredTime,
     onMouseMove,
     onMouseLeave,
     onTouchStart,

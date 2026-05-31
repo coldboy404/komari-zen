@@ -28,7 +28,7 @@ interface NodeTagsProps {
 const SIZE_CLASS = {
   sm: "zen-type-caption md:tracking-[0.06em]",
   md: "zen-type-data md:tracking-[0.08em]",
-  header: "text-sm tracking-widest uppercase",
+  header: "text-sm tracking-wide",
 } as const;
 
 const VIEWPORT_PAD = 8;
@@ -209,7 +209,7 @@ function TagOverflow({
       >
         <TagSeparator theme={theme} spaced={spaced} />
         <span
-          className={`cursor-default font-mono font-semibold uppercase leading-none ${sizeClass} ${getTagOverflowTextClass(theme)} transition-colors`}
+          className={`cursor-default font-mono font-semibold leading-none ${sizeClass} ${getTagOverflowTextClass(theme)} transition-colors`}
         >
           +{hiddenCount}
         </span>

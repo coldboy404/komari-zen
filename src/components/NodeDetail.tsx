@@ -875,7 +875,9 @@ export function NodeDetail({
   const showNodeMeta = hasPublicRemark || hasPrivateRemark;
   const groupName = node.nodeGroup.trim();
   const hasHeaderMeta = groupName.length > 0 || hasTags;
-  const headerMetaClass =
+  const headerGroupClass =
+    "text-sm font-black tracking-wide font-mono leading-none";
+  const headerMetaSepClass =
     "text-sm font-black tracking-widest uppercase font-mono leading-none";
   const hasClientVersion = node.clientVersion.trim().length > 0;
   const createdAtLabel = formatUpdatedAt(node.createdAt);
@@ -953,13 +955,13 @@ export function NodeDetail({
           {hasHeaderMeta ? (
             <div className="inline-flex max-w-full flex-wrap items-center gap-x-3 gap-y-1.5 md:justify-end shrink-0 leading-normal">
               {groupName ? (
-                <span className={`${headerMetaClass} ${textSecondary} shrink-0`}>
+                <span className={`${headerGroupClass} ${textSecondary} shrink-0`}>
                   {groupName}
                 </span>
               ) : null}
               {groupName && hasTags ? (
                 <span
-                  className={`${headerMetaClass} font-light opacity-40 ${textMuted} shrink-0 select-none`}
+                  className={`${headerMetaSepClass} font-light opacity-40 ${textMuted} shrink-0 select-none`}
                   aria-hidden
                 >
                   /
@@ -1460,7 +1462,7 @@ export function NodeDetail({
                   </div>
                 </>
               ) : (
-                <div className={`min-h-52 sm:min-h-56 md:min-h-60 ${pingPanelClass}`}>
+                <div className={`min-h-[28rem] ${pingPanelClass}`}>
                 <LatencyProbePanel
                   uuid={node.id}
                   hours={selectedPingHours}
