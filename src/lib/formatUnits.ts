@@ -170,7 +170,7 @@ export function formatCountRatio(current: number, total: number): string {
   return `${current} / ${total}`;
 }
 
-export function getTrafficTypeLabel(type: TrafficLimitType | undefined): string {
+export function getTrafficTypeShortLabel(type: TrafficLimitType | undefined): string {
   switch (type ?? "sum") {
     case "max":
       return "MAX";
@@ -184,6 +184,10 @@ export function getTrafficTypeLabel(type: TrafficLimitType | undefined): string 
     default:
       return "SUM";
   }
+}
+
+export function getTrafficTypeLabel(type: TrafficLimitType | undefined): string {
+  return getTrafficTypeShortLabel(type);
 }
 
 export type UptimeLabels = {

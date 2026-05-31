@@ -6,7 +6,12 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { VPSNode } from "../types";
 import { translations, Lang, formatMsg } from "../lib/i18n";
-import { formatKbps, formatNodeTraffic, getTrafficTypeLabel } from "@/lib/formatUnits";
+import {
+  formatKbps,
+  formatNodeTraffic,
+  getTrafficTypeShortLabel,
+  type TrafficLimitType,
+} from "@/lib/formatUnits";
 import { formatNodeBilling, type BillingLabels } from "@/lib/billingDisplay";
 import {
   ALL_NODE_GROUP,
@@ -47,6 +52,22 @@ type SortField = NodeSortField;
 type SortOrder = NodeSortOrder;
 
 const SORT_FIELD_MAP = NODE_SORT_FIELD_MAP;
+
+function trafficTypeBadgeClass(type: TrafficLimitType | undefined): string {
+  switch (type ?? "sum") {
+    case "max":
+      return "border-rose-500/25 bg-rose-500/10 text-rose-600 dark:border-rose-300/25 dark:bg-rose-300/12 dark:text-rose-300";
+    case "min":
+      return "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:border-emerald-300/25 dark:bg-emerald-300/12 dark:text-emerald-300";
+    case "up":
+      return "border-amber-500/30 bg-amber-500/12 text-amber-700 dark:border-amber-300/25 dark:bg-amber-300/12 dark:text-amber-300";
+    case "down":
+      return "border-cyan-500/25 bg-cyan-500/10 text-cyan-700 dark:border-cyan-300/25 dark:bg-cyan-300/12 dark:text-cyan-300";
+    case "sum":
+    default:
+      return "border-blue-500/25 bg-blue-500/10 text-blue-700 dark:border-blue-300/25 dark:bg-blue-300/12 dark:text-blue-300";
+  }
+}
 
 function getOSDetails(os: string, arch: string) {
   const upperOS = os.toUpperCase();
@@ -208,6 +229,7 @@ export function NodeTable({
       billingLongTerm: t.billingLongTerm,
       billingNoInfo: t.billingNoInfo,
       billingHidden: t.billingHidden,
+      billingNotSet: t.billingNotSet,
       billingMonthly: t.billingMonthly,
       billingQuarterly: t.billingQuarterly,
       billingSemiAnnual: t.billingSemiAnnual,
@@ -225,6 +247,7 @@ export function NodeTable({
       t.billingLongTerm,
       t.billingNoInfo,
       t.billingHidden,
+      t.billingNotSet,
       t.billingMonthly,
       t.billingQuarterly,
       t.billingSemiAnnual,
@@ -250,7 +273,7 @@ export function NodeTable({
     const urgentClass = billing.isExpired
       ? "text-zen-danger font-bold"
       : billing.isUrgent
-        ? "text-zen-danger font-bold animate-pulse"
+        ? "text-zen-danger font-bold"
         : "";
     return (
       <span className={`${textPrimary} font-bold ${urgentClass}`}>
@@ -259,17 +282,14 @@ export function NodeTable({
     );
   };
 
-  const trafficTypeBadgeClass =
-    "bg-zen-fill-muted/80 text-zen-fg-muted border border-zen-border-muted";
-
   const renderTrafficValue = (node: VPSNode) => (
     <span className="inline-flex items-center gap-1.5 min-w-0">
       <span className="truncate">{formatNodeTraffic(node)}</span>
       {node.bandwidthTotal > 0 && (
         <span
-          className={`inline-flex shrink-0 px-1 py-px rounded-sm ${zenType.micro} font-bold tracking-wide leading-none ${trafficTypeBadgeClass}`}
+          className={`inline-flex shrink-0 px-1 py-px rounded-sm border ${zenType.micro} font-bold tracking-wide leading-none ${trafficTypeBadgeClass(node.trafficLimitType)}`}
         >
-          {getTrafficTypeLabel(node.trafficLimitType)}
+          {getTrafficTypeShortLabel(node.trafficLimitType)}
         </span>
       )}
     </span>
@@ -597,30 +617,32 @@ export function NodeTable({
 
       {/* Desktop toolbar — original layout */}
       <div className="hidden lg:flex flex-col gap-8">
-        <div className="flex flex-row items-baseline justify-between py-2">
+        <div className="flex flex-row items-center justify-between gap-8 py-2">
           {showGroupTabs ? (
-            <ZenTabControl
-              tabs={groupTabItems}
-              value={activeGroup}
-              onChange={setActiveGroup}
-              separator={
-                <span
-                  className={`font-mono font-light ${zenType.caption} ${zenText.faint}/70`}
-                >
-                  {" / "}
-                </span>
-              }
-              tabClassName={`font-sans ${zenType.caption} zen-track-tight`}
-              activeClassName={`${textPrimary} font-black`}
-              idleClassName={`${textMuted} hover:text-zen-accent font-bold`}
-              className="flex-wrap gap-x-2 gap-y-2 min-w-0"
-            />
+            <div className="flex h-8 min-w-0 flex-1 items-center overflow-x-auto overscroll-x-contain scroll-smooth pr-2 whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <ZenTabControl
+                tabs={groupTabItems}
+                value={activeGroup}
+                onChange={setActiveGroup}
+                separator={
+                  <span
+                    className={`font-mono font-light ${zenType.caption} ${zenText.faint}/70`}
+                  >
+                    {" / "}
+                  </span>
+                }
+                tabClassName={`font-sans ${zenType.caption} zen-track-tight`}
+                activeClassName={`${textPrimary} font-black`}
+                idleClassName={`${textMuted} hover:text-zen-accent font-bold`}
+                className="h-8 w-max min-w-max flex-nowrap gap-x-2"
+              />
+            </div>
           ) : (
-            <div />
+            <div className="h-8 min-w-0 flex-1" />
           )}
 
-          <div className="flex flex-wrap items-center gap-x-8 gap-y-4 font-mono">
-            <div className={`flex items-center gap-3 ${zenType.caption} tracking-[0.2em] uppercase`}>
+          <div className="flex h-8 shrink-0 flex-nowrap items-center gap-x-8 font-mono">
+            <div className={`flex h-8 items-center gap-3 ${zenType.caption} tracking-[0.2em] uppercase`}>
               <span className={`${textMuted} shrink-0 leading-none`}>{t.viewMode}:</span>
               <ZenTabControl
                 tabs={viewModeTabs.map((tab) => ({
@@ -632,11 +654,11 @@ export function NodeTable({
                 tabClassName="inline-flex items-center leading-none py-0"
                 activeClassName={`${textPrimary} font-bold`}
                 idleClassName={`${textMuted} hover:text-zen-accent`}
-                className="gap-3"
+                className="h-8 gap-3"
               />
             </div>
 
-            <div className="flex items-baseline gap-2">
+            <div className="flex h-8 items-center gap-2">
               <span className={`${zenType.label} ${textMuted} shrink-0 leading-none tracking-[0.2em] uppercase`}>
                 {t.search}:
               </span>

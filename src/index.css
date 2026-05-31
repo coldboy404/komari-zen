@@ -597,22 +597,28 @@ body {
   .zen-map-star-halo {
     transform-box: fill-box;
     transform-origin: center;
+    opacity: 0.05;
+    transform: scale(0.94);
     will-change: transform, opacity;
-    animation: zen-map-twinkle-halo 4.2s cubic-bezier(0.45, 0.05, 0.2, 1) infinite;
+    animation: zen-map-twinkle-halo 4.2s cubic-bezier(0.45, 0.05, 0.2, 1) infinite both;
   }
 
   .zen-map-star-glow {
     transform-box: fill-box;
     transform-origin: center;
+    opacity: 0.1;
+    transform: scale(0.95);
     will-change: transform, opacity;
-    animation: zen-map-twinkle-glow 3.1s cubic-bezier(0.34, 1.25, 0.64, 1) infinite;
+    animation: zen-map-twinkle-glow 3.1s cubic-bezier(0.34, 1.25, 0.64, 1) infinite both;
   }
 
   .zen-map-star-core {
     transform-box: fill-box;
     transform-origin: center;
+    opacity: 0.84;
+    transform: scale(1);
     will-change: transform, opacity;
-    animation: zen-map-twinkle-core 2.5s cubic-bezier(0.34, 1.35, 0.64, 1) infinite;
+    animation: zen-map-twinkle-core 2.5s cubic-bezier(0.34, 1.35, 0.64, 1) infinite both;
   }
 }
 

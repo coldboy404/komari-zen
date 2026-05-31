@@ -18,6 +18,7 @@ export type BillingLabels = {
   billingLongTerm: string;
   billingNoInfo: string;
   billingHidden: string;
+  billingNotSet: string;
   billingMonthly: string;
   billingQuarterly: string;
   billingSemiAnnual: string;
@@ -87,6 +88,49 @@ export function formatPricePart(
   return `(${currency}${price} / ${suffix})`;
 }
 
+export function formatPriceLine(
+  price: number,
+  currency: string,
+  billingCycle: number,
+  labels: BillingLabels,
+): string | null {
+  if (price === 0) return null;
+  const suffix = formatBillingCycleSuffix(billingCycle, labels);
+  if (price === -1) return labels.billingFree;
+  return `${currency}${price} / ${suffix}`;
+}
+
+function effectiveBillingCycleDays(billingCycle: number): number {
+  return billingCycle > 0 ? billingCycle : 30;
+}
+
+function formatCurrencyAmount(currency: string, amount: number): string {
+  const safeAmount = Math.max(0, amount);
+  const text = safeAmount.toFixed(2).replace(/\.?0+$/, "");
+  return `${currency}${text}`;
+}
+
+export function formatRemainingValue(
+  node: NodeBillingInput,
+  labels: BillingLabels,
+): string | null {
+  if (node.price === 0) return null;
+  if (node.price === -1) return labels.billingFree;
+
+  const expiry = resolveExpiryState(node.expiredAt);
+  if (expiry.kind === "none") return null;
+  if (expiry.kind === "expired") return formatCurrencyAmount(node.currency, 0);
+  if (expiry.kind === "long_term") return null;
+  if (node.billingCycle === -1) {
+    return formatCurrencyAmount(node.currency, node.price);
+  }
+
+  const remainingValue =
+    (node.price * expiry.daysRemaining) /
+    effectiveBillingCycleDays(node.billingCycle);
+  return formatCurrencyAmount(node.currency, remainingValue);
+}
+
 export type NodeBillingInput = {
   price: number;
   currency: string;
@@ -110,7 +154,7 @@ export function formatNodeBilling(
 
   if (node.price === 0) {
     return {
-      text: labels.billingNoInfo,
+      text: labels.billingNotSet,
       isExpired: false,
       isUrgent: false,
       expiryKind: "none",
@@ -129,7 +173,9 @@ export function formatNodeBilling(
   switch (expiry.kind) {
     case "none":
       return {
-        text: pricePart ?? labels.billingNoInfo,
+        text: pricePart
+          ? `${labels.billingNotSet} ${pricePart}`
+          : labels.billingNotSet,
         isExpired: false,
         isUrgent: false,
         expiryKind: "none",

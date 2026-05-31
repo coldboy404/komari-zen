@@ -27,16 +27,17 @@ import {
   formatPercent,
   formatTrafficGb,
   formatNodeTraffic,
-  getTrafficTypeLabel,
   pickSpeedScale,
   scaleSpeedValue,
   formatSpeedAxisMax,
   formatStoragePair,
   formatUpdatedAt,
   formatUptime,
+  type TrafficLimitType,
 } from "@/lib/formatUnits";
 import {
-  formatPricePart,
+  formatPriceLine,
+  formatRemainingValue,
   isExpiryUnset,
   resolveExpiryState,
   type BillingLabels,
@@ -62,6 +63,25 @@ interface NodeDetailProps {
 
 const isNum = (v: number | null): v is number =>
   v != null && Number.isFinite(v);
+
+function getTrafficTypeFullLabel(
+  type: TrafficLimitType | undefined,
+  messages: Messages,
+): string {
+  switch (type ?? "sum") {
+    case "max":
+      return messages.trafficTypeMax;
+    case "min":
+      return messages.trafficTypeMin;
+    case "up":
+      return messages.trafficTypeOut;
+    case "down":
+      return messages.trafficTypeIn;
+    case "sum":
+    default:
+      return messages.trafficTypeSum;
+  }
+}
 
 function DetailSection({
   children,
@@ -945,7 +965,6 @@ export function NodeDetail({
   const hasPrivateRemark = privateRemarkText.length > 0;
   const showNodeMeta = hasPublicRemark || hasPrivateRemark;
   const groupName = node.nodeGroup.trim();
-  const hasHeaderMeta = groupName.length > 0 || hasTags;
   const headerGroupClass =
     "text-sm font-black tracking-wide font-mono leading-none";
   const headerMetaSepClass =
@@ -961,6 +980,7 @@ export function NodeDetail({
     billingLongTerm: t.billingLongTerm,
     billingNoInfo: t.billingNoInfo,
     billingHidden: t.billingHidden,
+    billingNotSet: t.billingNotSet,
     billingMonthly: t.billingMonthly,
     billingQuarterly: t.billingQuarterly,
     billingSemiAnnual: t.billingSemiAnnual,
@@ -971,14 +991,26 @@ export function NodeDetail({
     billingOnce: t.billingOnce,
     billingCycleDays: t.billingCycleDays,
   };
+  const remainingValueLabel = formatRemainingValue(
+    {
+      price: node.price,
+      currency: node.currency,
+      billingCycle: node.billingCycle,
+      expiredAt: node.expiredAt,
+    },
+    billingLabels,
+  );
+  const hasRemainingValue = remainingValueLabel !== null && node.price > 0;
+  const hasHeaderMeta = groupName.length > 0 || hasTags;
+  const showSepAfterGroup = groupName && hasTags;
   const expiryLabel = (() => {
-    if (!hasExpiry || !expiryState) return null;
+    if (!hasExpiry || !expiryState) return t.billingNotSet;
     if (expiryState.kind === "long_term") return t.billingLongTerm;
     if (expiryState.kind === "expired") return t.billingExpired;
     return formatUpdatedAt(node.expiredAt);
   })();
   const renewalPriceLabel = hasRenewalPrice
-    ? formatPricePart(
+    ? formatPriceLine(
         node.price,
         node.currency,
         node.billingCycle,
@@ -1067,7 +1099,7 @@ export function NodeDetail({
                   {groupName}
                 </span>
               ) : null}
-              {groupName && hasTags ? (
+              {showSepAfterGroup ? (
                 <span
                   className={`${headerMetaSepClass} font-light opacity-40 ${textMuted} shrink-0 select-none`}
                   aria-hidden
@@ -1195,7 +1227,7 @@ export function NodeDetail({
                   </>
                 ) : null}
 
-                {hasExpiry && expiryLabel ? (
+                {expiryLabel ? (
                   <>
                     <span className={textMuted}>{t.lblExpiredAt}</span>
                     <span className={`font-bold ${expiryValueClass}`}>
@@ -1212,8 +1244,22 @@ export function NodeDetail({
                 {hasRenewalPrice && renewalPriceLabel ? (
                   <>
                     <span className={textMuted}>{t.lblRenewalPrice}</span>
-                    <span className={`font-bold ${textPrimary}`}>
-                      {renewalPriceLabel}
+                    <span className={`inline-flex flex-wrap items-baseline gap-y-0.5 font-bold ${textPrimary}`}>
+                      {hasRemainingValue ? (
+                        <>
+                          <span>
+                            {renewalPriceLabel}｜{remainingValueLabel}
+                          </span>
+                          <span
+                            className={`ml-1 ${zenType.label} ${textMuted} font-bold uppercase leading-none opacity-70`}
+                            title={t.billingRemainingValueTitle}
+                          >
+                            {t.billingRemainingValueShort}
+                          </span>
+                        </>
+                      ) : (
+                        <span>{renewalPriceLabel}</span>
+                      )}
                     </span>
                   </>
                 ) : null}
@@ -1309,7 +1355,7 @@ export function NodeDetail({
                   {node.bandwidthTotal > 0 && (
                     <div className={`flex justify-between items-baseline pt-3 mt-3 border-t ${zenBorder.line} ${zenType.caption} font-mono`}>
                       <span className={`${textMuted} uppercase font-bold tracking-wider`}>
-                        {getTrafficTypeLabel(node.trafficLimitType)}
+                        {getTrafficTypeFullLabel(node.trafficLimitType, t)}
                       </span>
                       <span className={`font-bold ${textPrimary}`}>{formatNodeTraffic(node)}</span>
                     </div>

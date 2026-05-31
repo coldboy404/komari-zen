@@ -27,11 +27,11 @@
           "en": "Offline Server Position",
           "zh-CN": "离线节点位置"
         },
-        "options": "首位 First,保持 Keep,末尾 Last",
-        "default": "末尾 Last",
+        "options": "首位,保持,末尾",
+        "default": "末尾",
         "help": {
-          "en": "Where offline nodes appear in the list.",
-          "zh-CN": "离线节点在列表中的显示位置。"
+          "en": "Position of offline nodes.",
+          "zh-CN": "离线节点显示位置。"
         }
       },
       {
@@ -43,8 +43,8 @@
         },
         "default": true,
         "help": {
-          "en": "Show expiry date and price in the node table and cards.",
-          "zh-CN": "在节点列表与卡片中显示到期时间与价格信息。"
+          "en": "Show expiry and price.",
+          "zh-CN": "显示到期与价格。"
         }
       },
       {
@@ -54,11 +54,11 @@
           "en": "Default view mode",
           "zh-CN": "默认视图模式"
         },
-        "options": "卡片 Card,列表 List",
-        "default": "卡片 Card",
+        "options": "卡片,列表",
+        "default": "卡片",
         "help": {
-          "en": "Default layout for the node list. Users can switch in the dashboard; their choice is saved in the browser.",
-          "zh-CN": "节点列表的默认展示方式。用户可在前台切换视图，切换后将保存在浏览器本地。"
+          "en": "Default node list layout.",
+          "zh-CN": "节点列表默认布局。"
         }
       },
       {
@@ -68,11 +68,11 @@
           "en": "Default sort field",
           "zh-CN": "默认排序指标"
         },
-        "options": "默认 Default,名称 Name,处理器 CPU,内存 Memory,硬盘 Disk,延迟 Latency,到期 Expiry,状态 Status,系统 OS",
-        "default": "默认 Default",
+        "options": "默认,名称,处理器,内存,硬盘,延迟,到期,状态,系统",
+        "default": "默认",
         "help": {
-          "en": "Default ordering of the node list. 'Default' keeps the exact order returned by the Komari backend.",
-          "zh-CN": "节点列表的默认排序。选择 Default 则保持 Komari 后台返回的顺序，其余按所选指标排序。"
+          "en": "Default node sort field.",
+          "zh-CN": "节点列表默认排序项。"
         }
       },
       {
@@ -82,11 +82,11 @@
           "en": "Default sort order",
           "zh-CN": "默认排序方向"
         },
-        "options": "升序 Ascending,降序 Descending",
-        "default": "升序 Ascending",
+        "options": "升序,降序",
+        "default": "升序",
         "help": {
-          "en": "Sort direction used with the field above (ignored when the field is 'Default').",
-          "zh-CN": "配合上面的排序指标使用的方向；指标为 Default 时忽略。"
+          "en": "Sort direction.",
+          "zh-CN": "排序方向。"
         }
       },
       {
@@ -98,8 +98,8 @@
         },
         "default": true,
         "help": {
-          "en": "Show an abstract world map with one marker per region on the dashboard.",
-          "zh-CN": "在仪表盘显示抽象世界地图，每个国家/地区仅显示一个节点标记。"
+          "en": "Show the dashboard map.",
+          "zh-CN": "显示首页地图。"
         }
       },
       {
@@ -118,8 +118,8 @@
         },
         "default": true,
         "help": {
-          "en": "Show latency value and colored history blocks in the node list and cards. Requires Komari ping/record to be enabled.",
-          "zh-CN": "在节点列表与卡片中显示延迟数值与色块历史。需在 Komari 后台开启延迟检测与记录。"
+          "en": "Show latency and history.",
+          "zh-CN": "显示延迟与历史。"
         }
       },
       {
@@ -129,11 +129,11 @@
           "en": "Latency color mode",
           "zh-CN": "延迟色块分级模式"
         },
-        "options": "固定 Fixed,均值偏移 MeanDelta",
-        "default": "固定 Fixed",
+        "options": "固定,均值偏移",
+        "default": "固定",
         "help": {
-          "en": "Fixed: color by absolute ms thresholds. MeanDelta: color by offset from this node's recent average (Fixed is used as fallback when there are too few samples). Options: Fixed = fixed thresholds; MeanDelta = relative to mean.",
-          "zh-CN": "Fixed：按绝对毫秒阈值着色。MeanDelta：按相对该节点近期均值的偏移量着色（样本不足时回退为 Fixed）。选项含义：Fixed = 固定阈值；MeanDelta = 相对均值偏移。"
+          "en": "Fixed threshold or mean delta.",
+          "zh-CN": "固定阈值或均值偏移。"
         }
       },
       {
@@ -145,8 +145,8 @@
         },
         "default": 100,
         "help": {
-          "en": "In Fixed mode, values below this are green.",
-          "zh-CN": "Fixed 模式下，低于此值的延迟显示为绿色。"
+          "en": "Green below this value.",
+          "zh-CN": "低于此值为绿色。"
         }
       },
       {
@@ -158,8 +158,8 @@
         },
         "default": 150,
         "help": {
-          "en": "In Fixed mode, values from green limit up to (but not including) this are yellow; at or above is red.",
-          "zh-CN": "Fixed 模式下，绿色上限到此值（不含）为黄色，达到或超过为红色。"
+          "en": "Yellow below this value.",
+          "zh-CN": "低于此值为黄色。"
         }
       },
       {
@@ -171,8 +171,8 @@
         },
         "default": 10,
         "help": {
-          "en": "In MeanDelta mode, offset (ms − mean) at or below this is green.",
-          "zh-CN": "MeanDelta 模式下，偏移量（当前值 − 均值）不超过此值为绿色。"
+          "en": "Green delta limit.",
+          "zh-CN": "绿色偏移上限。"
         }
       },
       {
@@ -184,8 +184,8 @@
         },
         "default": 30,
         "help": {
-          "en": "In MeanDelta mode, offset above green delta up to this is yellow; above is red.",
-          "zh-CN": "MeanDelta 模式下，超过绿色偏移上限到此值为黄色，超过为红色。"
+          "en": "Yellow delta limit.",
+          "zh-CN": "黄色偏移上限。"
         }
       },
       {
@@ -202,11 +202,11 @@
           "en": "Color preset",
           "zh-CN": "配色方案"
         },
-        "options": "暖色 Warm,红色 Red,黄色 Yellow,绿色 Green,蓝色 Blue,紫色 Purple",
-        "default": "暖色 Warm",
+        "options": "暖色,红色,黄色,绿色,蓝色,紫色,黑白",
+        "default": "暖色",
         "help": {
-          "en": "Site-wide color palette. Warm is the default neutral tone; Red / Yellow / Green / Blue / Purple use a soft tinted background with a clear theme accent.",
-          "zh-CN": "全站配色方案。暖色为默认中性基调；红 / 黄 / 绿 / 蓝 / 紫 五套为柔和染色背景 + 清晰主题 accent，不过艳。"
+          "en": "Site-wide color palette.",
+          "zh-CN": "全站配色方案。"
         }
       },
       {
@@ -218,8 +218,8 @@
         },
         "default": "",
         "help": {
-          "en": "Optional #RRGGBB override for light mode page background. Leave empty to use the preset.",
-          "zh-CN": "可选，格式 #RRGGBB，覆盖亮色模式页面背景。留空则使用预设。"
+          "en": "Light background override.",
+          "zh-CN": "亮色背景覆盖。"
         }
       },
       {
@@ -231,8 +231,8 @@
         },
         "default": "",
         "help": {
-          "en": "Optional #RRGGBB override for dark mode page background. Leave empty to use the preset.",
-          "zh-CN": "可选，格式 #RRGGBB，覆盖暗色模式页面背景。留空则使用预设。"
+          "en": "Dark background override.",
+          "zh-CN": "暗色背景覆盖。"
         }
       },
       {
@@ -244,8 +244,8 @@
         },
         "default": "",
         "help": {
-          "en": "Optional #RRGGBB override for light mode raised surfaces. Leave empty to use the preset.",
-          "zh-CN": "可选，格式 #RRGGBB，覆盖亮色模式卡片与弹层背景。留空则使用预设。"
+          "en": "Light surface override.",
+          "zh-CN": "亮色卡片背景。"
         }
       },
       {
@@ -257,8 +257,8 @@
         },
         "default": "",
         "help": {
-          "en": "Optional #RRGGBB override for dark mode raised surfaces. Leave empty to use the preset.",
-          "zh-CN": "可选，格式 #RRGGBB，覆盖暗色模式卡片与弹层背景。留空则使用预设。"
+          "en": "Dark surface override.",
+          "zh-CN": "暗色卡片背景。"
         }
       },
       {
@@ -270,8 +270,8 @@
         },
         "default": "",
         "help": {
-          "en": "Optional #RRGGBB override for light mode accent and success colors. Leave empty to use the preset.",
-          "zh-CN": "可选，格式 #RRGGBB，覆盖亮色模式强调色与成功色。留空则使用预设。"
+          "en": "Light accent override.",
+          "zh-CN": "亮色强调色。"
         }
       },
       {
@@ -283,8 +283,8 @@
         },
         "default": "",
         "help": {
-          "en": "Optional #RRGGBB override for dark mode accent and success colors. Leave empty to use the preset.",
-          "zh-CN": "可选，格式 #RRGGBB，覆盖暗色模式强调色与成功色。留空则使用预设。"
+          "en": "Dark accent override.",
+          "zh-CN": "暗色强调色。"
         }
       },
       {
@@ -301,11 +301,11 @@
           "en": "Font preset",
           "zh-CN": "字体方案"
         },
-        "options": "默认 Default,等宽 MapleMonoCN,游梦 Yomeng,自定义 Custom",
-        "default": "默认 Default",
+        "options": "默认,等宽,游梦,自定义",
+        "default": "默认",
         "help": {
-          "en": "Site-wide font. Default: Inter + JetBrains Mono (Google Fonts). MapleMonoCN / Yomeng load via zeoseven CDN. Custom: your own family and CSS URL.",
-          "zh-CN": "全站字体。默认：Inter + JetBrains Mono（Google Fonts）。等宽 / 游梦：zeoseven CDN 加载。自定义：自行填写字体名与 CSS 地址。"
+          "en": "Site-wide font.",
+          "zh-CN": "全站字体。"
         }
       },
       {
@@ -317,8 +317,8 @@
         },
         "default": "",
         "help": {
-          "en": "When preset is Custom, the CSS font-family name (e.g. \"My Font\"). Leave empty to fall back to Default.",
-          "zh-CN": "选择「自定义」时填写 CSS font-family 名称（如 \"My Font\"）。留空则回退到默认字体。"
+          "en": "Used by Custom preset.",
+          "zh-CN": "自定义字体名。"
         }
       },
       {
@@ -330,8 +330,8 @@
         },
         "default": "",
         "help": {
-          "en": "When preset is Custom, URL to a stylesheet that loads the font (e.g. CDN or self-hosted @font-face CSS). Leave empty to fall back to Default fonts.",
-          "zh-CN": "选择「自定义」时填写加载字体的 CSS 地址（CDN 或自托管 @font-face）。留空则回退到默认字体。"
+          "en": "Font CSS URL.",
+          "zh-CN": "字体 CSS 地址。"
         }
       },
       {
@@ -350,8 +350,8 @@
         },
         "default": "",
         "help": {
-          "en": "Extra HTML or text below the theme credit line (e.g. ICP filing number).",
-          "zh-CN": "显示在主题署名下方的自定义内容，可填写备案号等。支持 HTML。"
+          "en": "Footer HTML or text.",
+          "zh-CN": "页脚 HTML 或文本。"
         }
       }
     ]

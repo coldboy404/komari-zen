@@ -4,7 +4,8 @@ export type ColorPresetId =
   | "Yellow"
   | "Green"
   | "Blue"
-  | "Purple";
+  | "Purple"
+  | "Mono";
 
 export type ModeColorTokens = {
   bg: string;
@@ -94,4 +95,5 @@ export const COLOR_PRESET_IDS: ColorPresetId[] = [
   "Green",
   "Blue",
   "Purple",
+  "Mono",
 ];

@@ -96,6 +96,11 @@ export type Messages = {
   lblCurrentSpeed: string;
   lblDownloaded: string;
   lblUploaded: string;
+  trafficTypeSum: string;
+  trafficTypeMax: string;
+  trafficTypeMin: string;
+  trafficTypeOut: string;
+  trafficTypeIn: string;
   lblMemoryUsage: string;
   lblDiskCoverage: string;
   lblDiskUsedShort: string;
@@ -129,6 +134,7 @@ export type Messages = {
   billingLongTerm: string;
   billingNoInfo: string;
   billingHidden: string;
+  billingNotSet: string;
   billingMonthly: string;
   billingQuarterly: string;
   billingSemiAnnual: string;
@@ -138,6 +144,8 @@ export type Messages = {
   billingQuinquennial: string;
   billingOnce: string;
   billingCycleDays: string;
+  billingRemainingValueShort: string;
+  billingRemainingValueTitle: string;
   publicRemark: string;
   privateRemark: string;
   lblNodeDistribution: string;
