@@ -24,6 +24,20 @@ export const FONT_PRESETS: Record<FontPresetId, FontPreset> = {
     cssUrls: ["https://fontsapi.zeoseven.com/813/main/result.css"],
     preconnect: ["https://fontsapi.zeoseven.com"],
   },
+  LXGWWenKai: {
+    id: "LXGWWenKai",
+    sans: '"LXGW WenKai", ui-sans-serif, system-ui, sans-serif',
+    mono: '"LXGW WenKai", ui-monospace, monospace',
+    cssUrls: ["https://fontsapi.zeoseven.com/292/main/result.css"],
+    preconnect: ["https://fontsapi.zeoseven.com"],
+  },
+  WenYuanRounded: {
+    id: "WenYuanRounded",
+    sans: '"WenYuan Rounded SC VF", ui-sans-serif, system-ui, sans-serif',
+    mono: '"WenYuan Rounded SC VF", ui-monospace, monospace',
+    cssUrls: ["https://fontsapi.zeoseven.com/414/main/result.css"],
+    preconnect: ["https://fontsapi.zeoseven.com"],
+  },
   Custom: {
     id: "Custom",
     sans: "",

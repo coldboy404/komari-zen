@@ -85,7 +85,7 @@ export function formatPricePart(
   if (price === -1) {
     return `(${labels.billingFree})`;
   }
-  return `(${currency}${price} / ${suffix})`;
+  return `(${currency}${price}/${suffix})`;
 }
 
 export function formatPriceLine(

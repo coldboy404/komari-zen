@@ -4,6 +4,7 @@
  */
 
 import React from "react";
+import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { VPSNode } from "../types";
 import { translations, Lang, type Messages } from "../lib/i18n";
@@ -965,6 +966,9 @@ export function NodeDetail({
   const hasPrivateRemark = privateRemarkText.length > 0;
   const showNodeMeta = hasPublicRemark || hasPrivateRemark;
   const groupName = node.nodeGroup.trim();
+  const groupHref = groupName
+    ? `/?group=${encodeURIComponent(groupName)}`
+    : "";
   const headerGroupClass =
     "text-sm font-black tracking-wide font-mono leading-none";
   const headerMetaSepClass =
@@ -1095,9 +1099,12 @@ export function NodeDetail({
           {hasHeaderMeta ? (
             <div className="inline-flex max-w-full flex-wrap items-center gap-x-3 gap-y-1.5 md:justify-end shrink-0 leading-normal">
               {groupName ? (
-                <span className={`${headerGroupClass} ${textSecondary} shrink-0`}>
+                <Link
+                  to={groupHref}
+                  className={`${headerGroupClass} ${textSecondary} shrink-0 transition-colors hover:text-zen-accent`}
+                >
                   {groupName}
-                </span>
+                </Link>
               ) : null}
               {showSepAfterGroup ? (
                 <span

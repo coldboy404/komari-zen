@@ -1,4 +1,10 @@
-export type FontPresetId = "Default" | "MapleMonoCN" | "Yomeng" | "Custom";
+export type FontPresetId =
+  | "Default"
+  | "MapleMonoCN"
+  | "Yomeng"
+  | "LXGWWenKai"
+  | "WenYuanRounded"
+  | "Custom";
 
 export type FontPreset = {
   id: FontPresetId;

@@ -24,6 +24,9 @@ export type Messages = {
   bandwidth: string;
   traffic: string;
   expiry: string;
+  autoRenewal: string;
+  autoRenewalEnabled: string;
+  autoRenewalDisabled: string;
   hardwareSpec: string;
   capacityLoads: string;
   storageFs: string;
@@ -132,6 +135,7 @@ export type Messages = {
   billingFree: string;
   billingExpired: string;
   billingLongTerm: string;
+  billingLongTermBadge: string;
   billingNoInfo: string;
   billingHidden: string;
   billingNotSet: string;

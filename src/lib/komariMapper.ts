@@ -190,6 +190,7 @@ export function mapKomariNodeToVps(
     price: node.price,
     currency: node.currency,
     billingCycle: node.billing_cycle,
+    autoRenewal: node.auto_renewal,
     expiredAt: node.expired_at,
     nodeGroup: group,
     tags: node.tags ?? "",

@@ -20,6 +20,7 @@ export type NodeBasicInfo = {
   price: number;
   tags: string;
   billing_cycle: number;
+  auto_renewal?: boolean;
   currency: string;
   group: string;
   remark: string;
@@ -86,6 +87,12 @@ export const NodeListProvider: React.FC<{ children: React.ReactNode }> = ({
           price: Number(n.price ?? 0),
           tags: String(n.tags ?? ""),
           billing_cycle: Number(n.billing_cycle ?? 0),
+          auto_renewal:
+            typeof n.auto_renewal === "boolean"
+              ? n.auto_renewal
+              : typeof n.autoRenewal === "boolean"
+                ? n.autoRenewal
+                : undefined,
           currency: String(n.currency ?? ""),
           group: String(n.group ?? ""),
           remark: String(n.remark ?? ""),

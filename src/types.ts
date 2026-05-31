@@ -46,6 +46,7 @@ export interface VPSNode {
   price: number;
   currency: string;
   billingCycle: number;
+  autoRenewal?: boolean;
   expiredAt: string;
   nodeGroup: string; // Komari API `group` field (user-defined, shown as-is)
   tags: string; // semicolon-separated, optional `<color>` suffix per tag

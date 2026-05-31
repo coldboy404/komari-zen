@@ -22,6 +22,7 @@ export type ThemeSettings = {
   logoShape: LogoShape;
   offlineServerPosition: string;
   showExpiryTime: boolean;
+  showAutoRenewal: boolean;
   customFooterHtml: string;
   defaultViewMode: NodeViewMode;
   defaultSortField: string;
@@ -55,6 +56,7 @@ export function useThemeSettings(): ThemeSettings {
       "Last",
     ),
     showExpiryTime: raw.showExpiryTime !== false,
+    showAutoRenewal: raw.showAutoRenewal !== false,
     customFooterHtml: (raw.customFooterHtml as string | undefined) ?? "",
     defaultViewMode: parseDefaultViewMode(raw.defaultViewMode),
     defaultSortField: parseThemeSelectOption(raw.defaultSortField, "Default"),

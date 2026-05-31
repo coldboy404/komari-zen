@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { VPSNode } from "../types";
 import { translations, Lang, formatMsg } from "../lib/i18n";
 import {
@@ -12,7 +13,12 @@ import {
   getTrafficTypeShortLabel,
   type TrafficLimitType,
 } from "@/lib/formatUnits";
-import { formatNodeBilling, type BillingLabels } from "@/lib/billingDisplay";
+import {
+  formatBillingCycleSuffix,
+  formatNodeBilling,
+  formatPricePart,
+  type BillingLabels,
+} from "@/lib/billingDisplay";
 import {
   ALL_NODE_GROUP,
   allGroupsLabel,
@@ -131,6 +137,7 @@ export function NodeTable({
   const t = translations[lang];
   const {
     showExpiryTime,
+    showAutoRenewal,
     defaultViewMode,
     defaultSortField,
     defaultSortOrder,
@@ -139,6 +146,8 @@ export function NodeTable({
   } = useThemeSettings();
   const { recordEnabled } = useRecordSettings();
   const latencyVisible = recordEnabled && showLatency;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const routeGroup = (searchParams.get("group") ?? "").trim();
 
   const mappedDefaultSort = SORT_FIELD_MAP[defaultSortField] ?? "default";
   const initialSortField: SortField =
@@ -146,7 +155,9 @@ export function NodeTable({
   const initialSortOrder: SortOrder =
     defaultSortOrder === "Descending" ? "desc" : "asc";
 
-  const [activeGroup, setActiveGroup] = useState<string>(ALL_NODE_GROUP);
+  const [activeGroup, setActiveGroup] = useState<string>(
+    () => routeGroup || ALL_NODE_GROUP,
+  );
   const [latencyModalNode, setLatencyModalNode] = useState<VPSNode | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [sortField, setSortField] = useState<SortField>(initialSortField);
@@ -168,6 +179,27 @@ export function NodeTable({
   }, []);
 
   const { viewMode, effectiveViewMode, setViewMode } = useViewMode(defaultViewMode);
+
+  const updateGroupSearchParam = useCallback(
+    (group: string, replace = false) => {
+      const nextParams = new URLSearchParams(searchParams);
+      if (group === ALL_NODE_GROUP) {
+        nextParams.delete("group");
+      } else {
+        nextParams.set("group", group);
+      }
+      setSearchParams(nextParams, { replace });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const handleGroupChange = useCallback(
+    (group: string) => {
+      setActiveGroup(group);
+      updateGroupSearchParam(group);
+    },
+    [updateGroupSearchParam],
+  );
 
   // Apply admin-configured default until the user manually changes the sort.
   React.useEffect(() => {
@@ -266,8 +298,8 @@ export function NodeTable({
     ],
   );
 
-  const renderBilling = (node: VPSNode) => {
-    const billing = formatNodeBilling(
+  const getNodeBilling = (node: VPSNode) =>
+    formatNodeBilling(
       {
         price: node.price,
         currency: node.currency,
@@ -276,6 +308,32 @@ export function NodeTable({
       },
       billingLabels,
     );
+
+  const getPricePart = (node: VPSNode) =>
+    formatPricePart(
+      node.price,
+      node.currency,
+      node.billingCycle,
+      billingLabels,
+    );
+
+  const getPlainPricePart = (node: VPSNode) => {
+    if (node.price === 0) return null;
+    if (node.price === -1) return billingLabels.billingFree;
+    return `${node.currency}${node.price} / ${formatBillingCycleSuffix(
+      node.billingCycle,
+      billingLabels,
+    )}`;
+  };
+
+  const renderBilling = (node: VPSNode) => {
+    const billing = getNodeBilling(node);
+    const pricePart = getPricePart(node);
+    const plainPricePart = getPlainPricePart(node);
+    const longTermText =
+      billing.expiryKind === "long_term"
+        ? (plainPricePart ?? billingLabels.billingHidden)
+        : billing.text;
     const urgentClass = billing.isExpired
       ? "text-zen-danger font-bold"
       : billing.isUrgent
@@ -283,7 +341,89 @@ export function NodeTable({
         : "";
     return (
       <span className={`${textPrimary} font-bold ${urgentClass}`}>
-        {billing.text}
+        {longTermText}
+      </span>
+    );
+  };
+
+  const isLongTermBilling = (node: VPSNode) =>
+    getNodeBilling(node).expiryKind === "long_term";
+
+  const shouldShowAutoRenewal = (node: VPSNode) =>
+    showAutoRenewal &&
+    typeof node.autoRenewal === "boolean" &&
+    !isLongTermBilling(node);
+
+  const autoRenewalText = (node: VPSNode) =>
+    node.autoRenewal ? t.autoRenewalEnabled : t.autoRenewalDisabled;
+
+  const autoRenewalBadgeClass = (node: VPSNode) =>
+    node.autoRenewal
+      ? "border-zen-success/25 bg-zen-success/10 text-zen-success"
+      : "border-zen-fg-faint/20 bg-zen-fill-muted/15 text-zen-fg-subtle";
+
+  const billingBadgeClass = (node: VPSNode) =>
+    isLongTermBilling(node)
+      ? "border-zen-accent/30 bg-zen-accent/12 text-zen-accent"
+      : autoRenewalBadgeClass(node);
+
+  const billingBadgeText = (node: VPSNode) =>
+    isLongTermBilling(node) ? t.billingLongTermBadge : autoRenewalText(node);
+
+  const shouldShowBillingBadge = (node: VPSNode) =>
+    isLongTermBilling(node) || shouldShowAutoRenewal(node);
+
+  const renderBillingBadge = (node: VPSNode) => {
+    if (!shouldShowBillingBadge(node)) return null;
+    return (
+      <span
+        className={`inline-flex shrink-0 rounded-sm border px-1 py-px font-mono ${zenType.micro} font-bold tracking-wide leading-none ${billingBadgeClass(node)}`}
+      >
+        {billingBadgeText(node)}
+      </span>
+    );
+  };
+
+  const renderBillingWithAutoRenewal = (node: VPSNode, compact = false) => (
+    <span
+      className={`inline-flex min-w-0 items-baseline ${compact ? "gap-1.5" : "gap-2"} ${compact ? "justify-end" : ""}`}
+    >
+      <span className="min-w-0">{renderBilling(node)}</span>
+      {renderBillingBadge(node)}
+    </span>
+  );
+
+  const renderTableBilling = (node: VPSNode) => {
+    const billing = getNodeBilling(node);
+    const urgentClass = billing.isExpired
+      ? "text-zen-danger font-bold"
+      : billing.isUrgent
+        ? "text-zen-danger font-bold"
+        : "";
+    const pricePart = getPricePart(node);
+    const plainPricePart = getPlainPricePart(node);
+    const hidden = `(${billingLabels.billingHidden})`;
+    const trailingPrice = pricePart ?? hidden;
+
+    let mainText = billing.text;
+    let suffixText = "";
+    if (billing.expiryKind === "active" || billing.expiryKind === "expired") {
+      mainText = `${billing.daysRemaining} ${billingLabels.unitDays}`;
+      suffixText = trailingPrice;
+    } else if (billing.expiryKind === "long_term") {
+      mainText = plainPricePart ?? billingLabels.billingHidden;
+    } else if (billing.expiryKind === "none" && pricePart) {
+      mainText = billingLabels.billingNotSet;
+      suffixText = pricePart;
+    }
+
+    return (
+      <span
+        className={`inline-flex min-w-0 items-baseline gap-2 ${textPrimary} font-bold ${urgentClass}`}
+      >
+        <span>{mainText}</span>
+        {suffixText ? <span>{suffixText}</span> : null}
+        {renderBillingBadge(node)}
       </span>
     );
   };
@@ -308,13 +448,19 @@ export function NodeTable({
   const showGroupTabs = nodeGroups.length >= 1;
 
   useEffect(() => {
+    const nextGroup = routeGroup || ALL_NODE_GROUP;
+    setActiveGroup(nextGroup);
+  }, [routeGroup]);
+
+  useEffect(() => {
     if (
       activeGroup !== ALL_NODE_GROUP &&
       !nodeGroups.includes(activeGroup)
     ) {
       setActiveGroup(ALL_NODE_GROUP);
+      updateGroupSearchParam(ALL_NODE_GROUP, true);
     }
-  }, [activeGroup, nodeGroups]);
+  }, [activeGroup, nodeGroups, updateGroupSearchParam]);
 
   useEffect(() => {
     const scroller = groupScrollRef.current;
@@ -569,7 +715,7 @@ export function NodeTable({
               scrollable
               tabs={groupTabItems}
               value={activeGroup}
-              onChange={setActiveGroup}
+              onChange={handleGroupChange}
               tabClassName={`snap-start rounded-full px-3.5 py-1.5 font-mono ${zenType.caption} zen-track-tight font-bold`}
               activeClassName="font-black text-zen-fg-strong"
               idleClassName={groupChipIdle}
@@ -628,7 +774,7 @@ export function NodeTable({
               <ZenTabControl
                 tabs={groupTabItems}
                 value={activeGroup}
-                onChange={setActiveGroup}
+                onChange={handleGroupChange}
                 separator={
                   <span
                     className={`font-mono font-light ${zenType.caption} ${zenText.faint}/70`}
@@ -872,7 +1018,7 @@ export function NodeTable({
 
                       {showExpiryTime && (
                         <td className={`py-3 px-2 ${zenType.data} font-bold`}>
-                          {renderBilling(node)}
+                          {renderTableBilling(node)}
                         </td>
                       )}
                     </tr>
@@ -1039,8 +1185,12 @@ export function NodeTable({
                     </div>
                     {showExpiryTime && (
                       <div className="flex justify-between gap-2">
-                        <span className="shrink-0">{t.expiry}:</span>
-                        <span className="min-w-0 text-right">{renderBilling(node)}</span>
+                        <span className="shrink-0">
+                          {shouldShowBillingBadge(node) ? t.autoRenewal : t.expiry}:
+                        </span>
+                        <span className="min-w-0 text-right">
+                          {renderBillingWithAutoRenewal(node, true)}
+                        </span>
                       </div>
                     )}
                   </div>

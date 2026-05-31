@@ -34,6 +34,8 @@ const THEME_OPTION_VALUE_MAP: Record<string, string> = {
   方形: "Square",
   等宽: "MapleMonoCN",
   游梦: "Yomeng",
+  霞鹜文楷: "LXGWWenKai",
+  文源圆体: "WenYuanRounded",
   自定义: "Custom",
 };
 
