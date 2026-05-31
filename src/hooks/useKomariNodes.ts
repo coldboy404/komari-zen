@@ -11,7 +11,7 @@ import {
   sortNodesByPolicy,
   type NodeHistoryBuffers,
 } from "@/lib/komariMapper";
-import { mergeLatencyHistory } from "@/lib/latencyDisplay";
+import { mergeLatencyHistory, LATENCY_HISTORY_LEN } from "@/lib/latencyDisplay";
 import { aggregateLivePing } from "@/lib/recordTransform";
 import type { LiveRecord } from "@/types/LiveData";
 import type { VPSNode } from "@/types";
@@ -27,7 +27,10 @@ function emptyHistoryBuffers(): NodeHistoryBuffers {
     tcpHistory: Array(20).fill(0),
     udpHistory: Array(20).fill(0),
     processesHistory: Array(20).fill(0),
-    latencyHistory: Array.from({ length: 10 }, () => ({ ms: 0, t: 0 })),
+    latencyHistory: Array.from({ length: LATENCY_HISTORY_LEN }, () => ({
+      ms: 0,
+      t: 0,
+    })),
   };
 }
 

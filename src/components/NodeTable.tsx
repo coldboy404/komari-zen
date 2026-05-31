@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { VPSNode } from "../types";
 import { translations, Lang, formatMsg } from "../lib/i18n";
 import { formatKbps, formatNodeTraffic, getTrafficTypeLabel } from "@/lib/formatUnits";
@@ -13,6 +13,12 @@ import {
   allGroupsLabel,
   collectNodeGroups,
 } from "@/lib/nodeGroups";
+import {
+  NODE_SORT_FIELD_MAP,
+  sortNodeList,
+  type NodeSortField,
+  type NodeSortOrder,
+} from "@/lib/nodeSort";
 import { useThemeSettings } from "@/hooks/useThemeSettings";
 import { useViewMode } from "@/hooks/useViewMode";
 import { useRecordSettings } from "@/hooks/useRecordSettings";
@@ -31,31 +37,10 @@ interface NodeTableProps {
   theme: "light" | "dark";
 }
 
-type SortField =
-  | "default"
-  | "status"
-  | "name"
-  | "os"
-  | "cpu"
-  | "mem"
-  | "disk"
-  | "latency"
-  | "days";
+type SortField = NodeSortField;
+type SortOrder = NodeSortOrder;
 
-type SortOrder = "asc" | "desc";
-
-/** Maps the admin config option string to the internal sort field. */
-const SORT_FIELD_MAP: Record<string, SortField> = {
-  Default: "default",
-  Name: "name",
-  CPU: "cpu",
-  Memory: "mem",
-  Disk: "disk",
-  Latency: "latency",
-  Expiry: "days",
-  Status: "status",
-  OS: "os",
-};
+const SORT_FIELD_MAP = NODE_SORT_FIELD_MAP;
 
 function getOSDetails(os: string, arch: string) {
   const upperOS = os.toUpperCase();
@@ -122,6 +107,18 @@ export function NodeTable({
   const [isSortMenuOpen, setIsSortMenuOpen] = useState<boolean>(false);
   const userSortedRef = React.useRef(false);
   const groupScrollRef = useRef<HTMLDivElement>(null);
+  const [groupScrollFade, setGroupScrollFade] = useState({ left: false, right: false });
+
+  const refreshGroupScrollFade = useCallback(() => {
+    const scroller = groupScrollRef.current;
+    if (!scroller) return;
+    const { scrollLeft, scrollWidth, clientWidth } = scroller;
+    const edge = 4;
+    setGroupScrollFade({
+      left: scrollLeft > edge,
+      right: scrollLeft + clientWidth < scrollWidth - edge,
+    });
+  }, []);
 
   const { viewMode, effectiveViewMode, setViewMode } = useViewMode(defaultViewMode);
 
@@ -243,7 +240,11 @@ export function NodeTable({
     </span>
   );
 
-  const nodeGroups = useMemo(() => collectNodeGroups(nodes), [nodes]);
+  const nodeGroups = useMemo(() => {
+    const ordered = sortNodeList(nodes, sortField, sortOrder, billingLabels);
+    return collectNodeGroups(ordered);
+  }, [nodes, sortField, sortOrder, billingLabels]);
+
   const showGroupTabs = nodeGroups.length >= 1;
 
   useEffect(() => {
@@ -254,6 +255,19 @@ export function NodeTable({
       setActiveGroup(ALL_NODE_GROUP);
     }
   }, [activeGroup, nodeGroups]);
+
+  useEffect(() => {
+    const scroller = groupScrollRef.current;
+    if (!scroller) return;
+    refreshGroupScrollFade();
+    scroller.addEventListener("scroll", refreshGroupScrollFade, { passive: true });
+    const ro = new ResizeObserver(refreshGroupScrollFade);
+    ro.observe(scroller);
+    return () => {
+      scroller.removeEventListener("scroll", refreshGroupScrollFade);
+      ro.disconnect();
+    };
+  }, [nodeGroups.length, refreshGroupScrollFade]);
 
   useEffect(() => {
     const scroller = groupScrollRef.current;
@@ -288,64 +302,10 @@ export function NodeTable({
 
   // Sorting — "default" keeps the order returned by the Komari backend
   // (already weighted + offline-positioned upstream in useKomariNodes).
-  const sortedNodes = useMemo(() => {
-    if (sortField === "default") return filteredNodes;
-    return [...filteredNodes].sort((a, b) => {
-      // Offline/down nodes are automatically grouped/forced at the bottom
-      if (a.online !== b.online) {
-        return a.online ? -1 : 1;
-      }
-
-      let valA: any = "";
-      let valB: any = "";
-
-      if (sortField === "status") {
-        valA = a.online ? 1 : 0;
-        valB = b.online ? 1 : 0;
-      } else if (sortField === "name") {
-        valA = a.name.toLowerCase();
-        valB = b.name.toLowerCase();
-      } else if (sortField === "os") {
-        valA = a.os.toLowerCase();
-        valB = b.os.toLowerCase();
-      } else if (sortField === "cpu") {
-        valA = a.online ? a.cpuUsage : -1;
-        valB = b.online ? b.cpuUsage : -1;
-      } else if (sortField === "mem") {
-        valA = a.online ? a.memoryUsed / a.memoryTotal : -1;
-        valB = b.online ? b.memoryUsed / b.memoryTotal : -1;
-      } else if (sortField === "disk") {
-        valA = a.online ? a.diskUsed / a.diskTotal : -1;
-        valB = b.online ? b.diskUsed / b.diskTotal : -1;
-      } else if (sortField === "latency") {
-        valA = a.online ? a.latency : 99999;
-        valB = b.online ? b.latency : 99999;
-      } else if (sortField === "days") {
-        valA = formatNodeBilling(
-          {
-            price: a.price,
-            currency: a.currency,
-            billingCycle: a.billingCycle,
-            expiredAt: a.expiredAt,
-          },
-          billingLabels,
-        ).daysRemaining;
-        valB = formatNodeBilling(
-          {
-            price: b.price,
-            currency: b.currency,
-            billingCycle: b.billingCycle,
-            expiredAt: b.expiredAt,
-          },
-          billingLabels,
-        ).daysRemaining;
-      }
-
-      if (valA < valB) return sortOrder === "asc" ? -1 : 1;
-      if (valA > valB) return sortOrder === "asc" ? 1 : -1;
-      return 0;
-    });
-  }, [filteredNodes, sortField, sortOrder, billingLabels]);
+  const sortedNodes = useMemo(
+    () => sortNodeList(filteredNodes, sortField, sortOrder, billingLabels),
+    [filteredNodes, sortField, sortOrder, billingLabels],
+  );
 
   const listColSpan =
     (latencyVisible ? 1 : 0) +
@@ -564,18 +524,22 @@ export function NodeTable({
       >
         {showGroupTabs ? (
           <div className="relative min-w-0">
-            <div
-              className={`pointer-events-none absolute inset-y-0 left-0 z-[1] w-3 bg-gradient-to-r ${
-                theme === "dark" ? "from-zen-bg/95" : "from-zen-bg/90"
-              } to-transparent`}
-              aria-hidden
-            />
-            <div
-              className={`pointer-events-none absolute inset-y-0 right-0 z-[1] w-5 bg-gradient-to-l ${
-                theme === "dark" ? "from-zen-bg/95" : "from-zen-bg/90"
-              } to-transparent`}
-              aria-hidden
-            />
+            {groupScrollFade.left ? (
+              <div
+                className={`pointer-events-none absolute inset-y-0 left-0 z-[1] w-3 bg-gradient-to-r ${
+                  theme === "dark" ? "from-neutral-900/80" : "from-zen-elevate/80"
+                } to-transparent`}
+                aria-hidden
+              />
+            ) : null}
+            {groupScrollFade.right ? (
+              <div
+                className={`pointer-events-none absolute inset-y-0 right-0 z-[1] w-5 bg-gradient-to-l ${
+                  theme === "dark" ? "from-neutral-900/80" : "from-zen-elevate/80"
+                } to-transparent`}
+                aria-hidden
+              />
+            ) : null}
             <div
               ref={groupScrollRef}
               className="overflow-x-auto overscroll-x-contain scroll-smooth snap-x snap-mandatory touch-pan-x [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"

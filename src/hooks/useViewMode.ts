@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { parseThemeSelectOption } from "@/lib/themeOptionValue";
 
 export type NodeViewMode = "list" | "card";
 
@@ -64,6 +65,7 @@ export function useViewMode(defaultViewMode: NodeViewMode) {
 }
 
 export function parseDefaultViewMode(raw: unknown): NodeViewMode {
-  if (raw === "List" || raw === "list") return "list";
+  const v = parseThemeSelectOption(raw, "Card");
+  if (v === "List" || v === "list") return "list";
   return "card";
 }

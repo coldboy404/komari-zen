@@ -59,4 +59,5 @@ export type MetricKey =
   | "netout"
   | "tcp"
   | "udp"
-  | "processes";
+  | "processes"
+  | "load1";

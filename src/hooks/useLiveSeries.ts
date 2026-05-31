@@ -17,6 +17,7 @@ export interface LiveSample {
   tcp: number;
   udp: number;
   proc: number;
+  load1: number;
 }
 
 /** Rolling window length (~5 min at a 2s cadence). */
@@ -38,6 +39,7 @@ function sampleFromNode(node: VPSNode, t: number): LiveSample {
     tcp: node.tcpConnections ?? 0,
     udp: node.udpConnections ?? 0,
     proc: node.processesCount ?? 0,
+    load1: node.systemLoad1 ?? 0,
   };
 }
 

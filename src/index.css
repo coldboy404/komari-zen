@@ -179,4 +179,114 @@ body {
       padding-bottom: 0.25rem;
     }
   }
+
+  /* Node distribution map — springy twinkling star markers */
+  .zen-map-star-halo {
+    transform-box: fill-box;
+    transform-origin: center;
+    will-change: transform, opacity;
+    animation: zen-map-twinkle-halo 4.2s cubic-bezier(0.45, 0.05, 0.2, 1) infinite;
+  }
+
+  .zen-map-star-glow {
+    transform-box: fill-box;
+    transform-origin: center;
+    will-change: transform, opacity;
+    animation: zen-map-twinkle-glow 3.1s cubic-bezier(0.34, 1.25, 0.64, 1) infinite;
+  }
+
+  .zen-map-star-core {
+    transform-box: fill-box;
+    transform-origin: center;
+    will-change: transform, opacity;
+    animation: zen-map-twinkle-core 2.5s cubic-bezier(0.34, 1.35, 0.64, 1) infinite;
+  }
+}
+
+@keyframes zen-map-twinkle-halo {
+  0%,
+  100% {
+    opacity: 0.05;
+    transform: scale(0.94);
+  }
+  32% {
+    opacity: 0.14;
+    transform: scale(1.06);
+  }
+  48% {
+    opacity: 0.21;
+    transform: scale(1.12);
+  }
+  62% {
+    opacity: 0.15;
+    transform: scale(1.04);
+  }
+  78% {
+    opacity: 0.18;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes zen-map-twinkle-glow {
+  0%,
+  100% {
+    opacity: 0.1;
+    transform: scale(0.95);
+  }
+  26% {
+    opacity: 0.22;
+    transform: scale(1.04);
+  }
+  42% {
+    opacity: 0.34;
+    transform: scale(1.1);
+  }
+  56% {
+    opacity: 0.26;
+    transform: scale(1.02);
+  }
+  70% {
+    opacity: 0.3;
+    transform: scale(1.07);
+  }
+  86% {
+    opacity: 0.16;
+    transform: scale(0.98);
+  }
+}
+
+@keyframes zen-map-twinkle-core {
+  0%,
+  100% {
+    opacity: 0.84;
+    transform: scale(1);
+  }
+  30% {
+    opacity: 0.94;
+    transform: scale(1.05);
+  }
+  44% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  58% {
+    opacity: 0.92;
+    transform: scale(1.02);
+  }
+  72% {
+    opacity: 0.98;
+    transform: scale(1.06);
+  }
+  88% {
+    opacity: 0.88;
+    transform: scale(0.99);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zen-map-star-halo,
+  .zen-map-star-glow,
+  .zen-map-star-core {
+    animation: none;
+  }
 }

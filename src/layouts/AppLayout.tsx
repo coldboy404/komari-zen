@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { Outlet, useMatch } from "react-router-dom";
 import { ConsoleHeader } from "@/components/ConsoleHeader";
 import { DashboardSkeleton } from "@/components/DashboardSkeleton";
@@ -17,13 +17,19 @@ import { translations } from "@/lib/i18n";
 import { zenType } from "@/lib/typography";
 import { sanitizeFooterHtml } from "@/lib/sanitizeHtml";
 
+const NodeDistributionMap = lazy(() =>
+  import("@/components/NodeDistributionMap").then((m) => ({
+    default: m.NodeDistributionMap,
+  })),
+);
+
 export function AppLayout() {
   useSiteMeta();
   const { nodes, isLoading, error } = useKomariNodes();
   const { theme, preference: themePreference, setPreference: setThemePreference } =
     useThemePreference();
   const { lang, setPreference: setLangPreference } = useLangPreference();
-  const { customFooterHtml } = useThemeSettings();
+  const { customFooterHtml, showNodeMap } = useThemeSettings();
   const komariVersion = useKomariVersion();
   const themeVersion = __THEME_VERSION__;
   const t = translations[lang];
@@ -77,9 +83,27 @@ export function AppLayout() {
             view={isDetail ? "detail" : "dashboard"}
           />
 
-          <main className={isDetail ? "space-y-4 md:space-y-5" : "space-y-10 md:space-y-16 lg:space-y-20"}>
-            <Outlet context={{ nodes, lang, theme }} />
-          </main>
+          {isDetail ? (
+            <main className="space-y-4 md:space-y-5">
+              <Outlet context={{ nodes, lang, theme }} />
+            </main>
+          ) : (
+            <div className="space-y-2 md:space-y-3">
+              {showNodeMap ? (
+                <Suspense fallback={null}>
+                  <NodeDistributionMap
+                    nodes={nodes}
+                    theme={theme}
+                    lang={lang}
+                  />
+                </Suspense>
+              ) : null}
+
+              <main>
+                <Outlet context={{ nodes, lang, theme }} />
+              </main>
+            </div>
+          )}
         </div>
 
         <footer

@@ -14,7 +14,9 @@ import { useLoadRecords } from "@/hooks/useLoadRecords";
 import { useRecordSettings } from "@/hooks/useRecordSettings";
 import {
   buildMetricHistory,
+  formatLoadAverage,
   loadTotalsFromNode,
+  normalizeLoadSeries,
 } from "@/lib/recordTransform";
 import {
   formatChartOffsetLabel,
@@ -53,15 +55,21 @@ const isNum = (v: number | null): v is number =>
 
 type ChartPt = { x: number; y: number; val: number };
 
-/** Build an SVG line path, starting a fresh sub-path after each null gap. */
+type ChartExtraSeries = {
+  data: (number | null)[];
+  color: string;
+  label: string;
+  formatValue?: (chartValue: number) => string;
+  strokeWidth?: number;
+  strokeDasharray?: string;
+};
+
+/** Build an SVG line path, connecting across null gaps. */
 function buildLinePath(pts: (ChartPt | null)[]): string {
   let d = "";
   let started = false;
   for (const p of pts) {
-    if (!p) {
-      started = false;
-      continue;
-    }
+    if (!p) continue;
     d += started ? ` L ${p.x} ${p.y}` : `M ${p.x} ${p.y}`;
     started = true;
   }
@@ -113,6 +121,7 @@ const MiniLineChart = ({
   hasData = true,
   valueFormatter,
   timestamps,
+  extraSeries,
 }: {
   data: (number | null)[];
   data2?: (number | null)[];
@@ -132,6 +141,7 @@ const MiniLineChart = ({
   hasData?: boolean;
   valueFormatter?: (value: number) => string;
   timestamps?: number[];
+  extraSeries?: ChartExtraSeries[];
 }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
 
@@ -139,6 +149,7 @@ const MiniLineChart = ({
     maxVal,
     ...data.filter(isNum),
     ...(data2?.filter(isNum) ?? []),
+    ...(extraSeries?.flatMap((s) => s.data.filter(isNum)) ?? []),
     0.001,
   );
   const speedScale =
@@ -216,6 +227,14 @@ const MiniLineChart = ({
       )
     : null;
 
+  const extraLayers = (extraSeries ?? []).map((series) => {
+    const denominatorExtra = Math.max(1, series.data.length - 1);
+    const points = series.data.map((val, i) =>
+      toPoint(val, paddingX + (i / denominatorExtra) * chartWidth),
+    );
+    return { ...series, points };
+  });
+
   const pathD = buildLinePath(points1);
   const areaD = buildAreaPath(points1, baseY);
   const pathD2 = points2 ? buildLinePath(points2) : "";
@@ -258,8 +277,14 @@ const MiniLineChart = ({
   const activeX = points1[activeIdx]?.x ?? fallbackX;
   const activeY1 = points1[activeIdx]?.y ?? baseY;
   const activeY2 = points2 && points2[activeIdx] ? points2[activeIdx]!.y : baseY;
-  const minY =
-    points2 && points2[activeIdx] ? Math.min(activeY1, activeY2) : activeY1;
+  const activeExtraYs = extraLayers.map(
+    (layer) => layer.points[activeIdx]?.y ?? baseY,
+  );
+  const minY = Math.min(
+    activeY1,
+    points2 && points2[activeIdx] ? activeY2 : activeY1,
+    ...(activeExtraYs.length ? activeExtraYs : [activeY1]),
+  );
 
   const safeId = title.replace(/[^a-zA-Z0-9]/g, "_");
 
@@ -339,6 +364,27 @@ const MiniLineChart = ({
                 y2={height - paddingY}
                 stroke={strokeColor}
                 strokeDasharray="2,4"
+              />
+            );
+          })}
+
+          {/* Extra overlay lines (e.g. system load) */}
+          {extraLayers.map((layer, layerIdx) => {
+            const path = buildLinePath(layer.points);
+            if (!path) return null;
+            return (
+              <path
+                key={`${safeId}-extra-${layerIdx}`}
+                d={path}
+                stroke={layer.color}
+                strokeWidth={layer.strokeWidth ?? 1}
+                {...(layer.strokeDasharray
+                  ? { strokeDasharray: layer.strokeDasharray }
+                  : {})}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+                className="opacity-85"
               />
             );
           })}
@@ -450,6 +496,30 @@ const MiniLineChart = ({
                 <span className="font-bold" style={{ color: color2 }}>{formatDisplay(displayVal2)}</span>
               </div>
             )}
+            {extraLayers.map((layer, layerIdx) => {
+              const raw = layer.data[activeIdx];
+              if (raw == null || !Number.isFinite(raw)) return null;
+              const shown = layer.formatValue
+                ? layer.formatValue(raw)
+                : formatDisplay(raw);
+              return (
+                <div
+                  key={`${safeId}-tip-${layerIdx}`}
+                  className="flex items-center gap-4 whitespace-nowrap justify-between"
+                >
+                  <span className="flex items-center gap-1">
+                    <span
+                      className="w-1.5 h-1.5 rounded-full inline-block"
+                      style={{ backgroundColor: layer.color }}
+                    />
+                    <span>{layer.label}:</span>
+                  </span>
+                  <span className="font-bold" style={{ color: layer.color }}>
+                    {shown}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -649,6 +719,7 @@ export function NodeDetail({
     );
 
   const cpuHist = buildHistory("cpu");
+  const loadHist = buildHistory("load1");
   const memHist = buildHistory("mem");
   const swapHist = buildHistory("swap");
   const diskHist = buildHistory("disk");
@@ -688,6 +759,7 @@ export function NodeDetail({
     tcp: liveSamples.map((s) => s.tcp),
     udp: liveSamples.map((s) => s.udp),
     proc: liveSamples.map((s) => s.proc),
+    load: liveSamples.map((s) => s.load1),
   };
   const liveHasData = liveSamples.length > 0;
   // Approximate window span in hours for the hover "time ago" label.
@@ -705,6 +777,21 @@ export function NodeDetail({
       3600_000,
   );
   const chartTimestamps = pick(liveTimestamps, histTimestamps);
+
+  const cpuCores = Math.max(1, node.cpuCores);
+  const formatLoadChartValue = (chartVal: number) =>
+    formatLoadAverage((chartVal / 100) * cpuCores);
+  const normLoadSeries = (liveVals: number[], histVals: (number | null)[]) =>
+    normalizeLoadSeries(pick(liveVals, histVals), cpuCores);
+
+  const cpuLoadExtraSeries: ChartExtraSeries[] = [
+    {
+      data: normLoadSeries(live.load, loadHist.values),
+      color: "#f59e0b",
+      label: t.lblLoad1m,
+      formatValue: formatLoadChartValue,
+    },
+  ];
 
   const hasTags = parseNodeTags(node.tags).length > 0;
   const publicRemarkText = node.publicRemark.trim();
@@ -1152,12 +1239,15 @@ export function NodeDetail({
                       theme={theme}
                       timeRange={pick(liveTimeRange, selectedLoadHours)}
                       messages={t}
-                      hasData={pick(liveHasData, cpuHist.hasData)}
+                      hasData={
+                        pick(liveHasData, cpuHist.hasData || loadHist.hasData)
+                      }
                       timestamps={chartTimestamps}
+                      extraSeries={cpuLoadExtraSeries}
                       subMetrics={
-                        <div className={`flex justify-between items-center ${zenType.caption} font-mono ${textMuted}`}>
+                        <div className={`flex justify-between items-center gap-3 ${zenType.caption} font-mono ${textMuted}`}>
                           <span>{t.lblLoadAvgShort} [{node.load5}]</span>
-                          <span>{node.cpuCores} {t.lblCpuCores}</span>
+                          <span>{t.lblCpuCores} {node.cpuCores}</span>
                         </div>
                       }
                     />

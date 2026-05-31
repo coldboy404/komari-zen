@@ -2,6 +2,7 @@ import { usePublicInfo } from "@/contexts/PublicInfoContext";
 
 import type { NodeViewMode } from "@/hooks/useViewMode";
 import { parseDefaultViewMode } from "@/hooks/useViewMode";
+import { parseThemeSelectOption } from "@/lib/themeOptionValue";
 import {
   latencyColorConfigFromTheme,
   type LatencyColorConfig,
@@ -15,6 +16,7 @@ export type ThemeSettings = {
   defaultSortField: string;
   defaultSortOrder: string;
   showLatency: boolean;
+  showNodeMap: boolean;
   latencyColorConfig: LatencyColorConfig;
 };
 
@@ -23,13 +25,17 @@ export function useThemeSettings(): ThemeSettings {
   const raw = (publicInfo?.theme_settings ?? {}) as Record<string, unknown>;
 
   return {
-    offlineServerPosition: (raw.offlineServerPosition as string | undefined) ?? "Last",
+    offlineServerPosition: parseThemeSelectOption(
+      raw.offlineServerPosition,
+      "Last",
+    ),
     showExpiryTime: raw.showExpiryTime !== false,
     customFooterHtml: (raw.customFooterHtml as string | undefined) ?? "",
     defaultViewMode: parseDefaultViewMode(raw.defaultViewMode),
-    defaultSortField: (raw.defaultSortField as string | undefined) ?? "Default",
-    defaultSortOrder: (raw.defaultSortOrder as string | undefined) ?? "Ascending",
+    defaultSortField: parseThemeSelectOption(raw.defaultSortField, "Default"),
+    defaultSortOrder: parseThemeSelectOption(raw.defaultSortOrder, "Ascending"),
     showLatency: raw.showLatency !== false,
+    showNodeMap: raw.showNodeMap !== false,
     latencyColorConfig: latencyColorConfigFromTheme(raw),
   };
 }

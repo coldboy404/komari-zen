@@ -7,6 +7,8 @@ import {
   formatLatencyMs,
   formatLatencyTooltipTime,
   latencyBlockColor,
+  METRIC_BAR_SEGMENTS,
+  LATENCY_HISTORY_LEN,
   padLatencyHistory,
 } from "@/lib/latencyDisplay";
 import { zenType } from "@/lib/typography";
@@ -56,6 +58,10 @@ type LatencyBlockProps = {
   colorConfig: LatencyColorConfig;
   mean: number | null;
 };
+
+const SLOT_WIDTH_CH = METRIC_BAR_SEGMENTS / LATENCY_HISTORY_LEN;
+/** Horizontal squeeze — 20 glyphs in the same width as 10 full ■ blocks. */
+const BLOCK_SCALE_X = SLOT_WIDTH_CH;
 
 function LatencyBlock({
   sample,
@@ -146,9 +152,7 @@ function LatencyBlock({
 
   const colorClass = hasData
     ? latencyBlockColor(sample.ms, theme, colorConfig, mean)
-    : theme === "dark"
-      ? "text-neutral-600"
-      : "text-neutral-400/80";
+    : "";
 
   return (
     <>
@@ -157,14 +161,21 @@ function LatencyBlock({
         role={hasData ? "button" : undefined}
         tabIndex={hasData ? 0 : undefined}
         aria-label={hasData ? tipText : undefined}
-        className={`${hasData ? "cursor-pointer" : "cursor-default"} ${colorClass}`}
+        className={`inline-block shrink-0 text-center leading-none ${hasData ? `cursor-pointer ${colorClass}` : "cursor-default"}`}
+        style={{ width: `${SLOT_WIDTH_CH}ch` }}
         onMouseEnter={hasData ? showPanel : undefined}
         onMouseLeave={hasData ? hidePanel : undefined}
         onFocus={hasData ? showPanel : undefined}
         onBlur={hasData ? hidePanel : undefined}
         onClick={onClick}
       >
-        {hasData ? "■" : "·"}
+        <span
+          aria-hidden
+          className="inline-block origin-bottom leading-none"
+          style={{ transform: `scaleX(${BLOCK_SCALE_X})` }}
+        >
+          {hasData ? "■" : "·"}
+        </span>
       </span>
       {hasData &&
         open &&
@@ -212,18 +223,23 @@ export function LatencyHistoryBlocks({
   return (
     <span className={`inline-flex items-baseline font-mono ${className}`}>
       <span className={`font-bold ${valueColor}`}>{valueLabel}</span>
-      <span className="text-neutral-500/30 ml-1">
+      <span className="ml-1 font-mono text-neutral-500/30">
         {"["}
-        {blocks.map((sample, i) => (
-          <React.Fragment key={`${sample.t}-${i}`}>
-            <LatencyBlock
-              sample={sample}
-              theme={theme}
-              colorConfig={colorConfig}
-              mean={mean}
-            />
-          </React.Fragment>
-        ))}
+        <span
+          className="inline-flex items-baseline"
+          style={{ width: `${METRIC_BAR_SEGMENTS}ch` }}
+        >
+          {blocks.map((sample, i) => (
+            <React.Fragment key={`${sample.t}-${i}`}>
+              <LatencyBlock
+                sample={sample}
+                theme={theme}
+                colorConfig={colorConfig}
+                mean={mean}
+              />
+            </React.Fragment>
+          ))}
+        </span>
         {"]"}
       </span>
     </span>

@@ -26,7 +26,8 @@ export interface VPSNode {
   cpuCores: number;
   cpuVendor: string;
   cpuUsage: number; // Current CPU % (0 - 100)
-  load5: string; // e.g. "0.20, 0.23, 0.31"
+  load5: string; // 1-minute load average, e.g. "0.30"
+  systemLoad1: number;
   memoryTotal: number; // in GB
   memoryUsed: number;  // in GB
   swapTotal: number;   // in GB

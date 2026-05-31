@@ -44,8 +44,23 @@ export function formatUptime(seconds: number): string {
   return `${d}d ${h}h ${m}m`;
 }
 
-export function formatLoad(load1: number, load5: number, load15: number): string {
-  return `${load1.toFixed(2)}, ${load5.toFixed(2)}, ${load15.toFixed(2)}`;
+/** Map raw load average to 0–100 chart space by logical core count. */
+export function loadToChartPercent(load: number, cpuCores: number): number {
+  if (!cpuCores || cpuCores <= 0) return 0;
+  return (load / cpuCores) * 100;
+}
+
+export function formatLoadAverage(load: number): string {
+  return load.toFixed(2);
+}
+
+export function normalizeLoadSeries(
+  values: (number | null)[],
+  cpuCores: number,
+): (number | null)[] {
+  return values.map((v) =>
+    v == null ? null : loadToChartPercent(v, cpuCores),
+  );
 }
 
 export function resolveDiskUsedGb(
@@ -212,6 +227,8 @@ export function loadMetricValue(
       return rec.connections_udp ?? 0;
     case "processes":
       return rec.process ?? 0;
+    case "load1":
+      return rec.load ?? 0;
   }
 }
 
@@ -301,6 +318,8 @@ export function recentMetricValue(
       return rec.connections.udp ?? 0;
     case "processes":
       return rec.process ?? 0;
+    case "load1":
+      return rec.load.load1 ?? 0;
   }
 }
 
@@ -340,7 +359,8 @@ export function buildMetricHistory(
     (metric === "cpu" ||
       metric === "mem" ||
       metric === "netin" ||
-      metric === "netout")
+      metric === "netout" ||
+      metric === "load1")
   ) {
     const series = recentToSparkline(recentRecords, metric, totals);
     const values = padSeriesLeft(

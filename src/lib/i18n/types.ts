@@ -116,6 +116,7 @@ export type Messages = {
   errorLoadNodes: string;
   errorCheckEnv: string;
   lblLoadAvgShort: string;
+  lblLoad1m: string;
   trafficTypeSum: string;
   trafficTypeMax: string;
   trafficTypeMin: string;
@@ -137,4 +138,7 @@ export type Messages = {
   billingCycleDays: string;
   publicRemark: string;
   privateRemark: string;
+  lblNodeDistribution: string;
+  mapScrollHint: string;
+  mapRegionTooltip: (code: string, online: number, total: number) => string;
 };

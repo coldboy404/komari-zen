@@ -7,14 +7,16 @@ export const ALL_NODE_GROUP = "__all__";
 export function collectNodeGroups(
   nodes: { nodeGroup?: string }[],
 ): string[] {
-  const set = new Set<string>();
+  const seen = new Set<string>();
+  const order: string[] = [];
   for (const node of nodes) {
     const g = node.nodeGroup?.trim();
-    if (g) set.add(g);
+    if (g && !seen.has(g)) {
+      seen.add(g);
+      order.push(g);
+    }
   }
-  return Array.from(set).sort((a, b) =>
-    a.localeCompare(b, undefined, { sensitivity: "base" }),
-  );
+  return order;
 }
 
 export function allGroupsLabel(lang: Lang): string {

@@ -7,7 +7,7 @@ import type { PingRecordsResponse } from "@/types/records";
 
 const CONCURRENCY = 3;
 const POLL_MS = 60_000;
-/** Enough window for 10 points at typical ping intervals (30–60s). */
+/** Enough window for card latency blocks at typical ping intervals (30–60s). */
 const HISTORY_HOURS = 1;
 
 async function mapWithConcurrency<T, R>(

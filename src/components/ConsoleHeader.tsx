@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import { Settings } from "lucide-react";
 import { VPSNode } from "../types";
 import { translations, Lang, getLangMenuLabel, LANG_MENU_OPTIONS } from "../lib/i18n";
@@ -183,6 +184,16 @@ export function ConsoleHeader({
   const textUnit = theme === "dark" ? "text-neutral-400" : "text-neutral-400";
   const btnHoverColor = "hover:text-emerald-500 dark:hover:text-amber-400";
 
+  const siteTitleClass = `text-3xl font-black tracking-tight normal-case ${textPrimary} select-none break-words`;
+  const siteTitle = (
+    <Link
+      to="/"
+      className="text-inherit no-underline decoration-transparent hover:text-inherit focus-visible:outline-none"
+    >
+      {siteName}
+    </Link>
+  );
+
   const adminEntryLink = (className = "") => (
     <a
       href="/admin"
@@ -300,8 +311,8 @@ export function ConsoleHeader({
       {/* 1. Responsive Top Bar with absolute vertical alignment (items-center) */}
       <div className={view === "detail" ? "pb-4 md:pb-5 border-b border-zen-line" : "pb-8 md:pb-10"}>
         <div className="md:hidden space-y-1">
-          <h1 className={`text-3xl font-black tracking-tight normal-case ${textPrimary} select-none break-words`}>
-            {siteName}
+          <h1 className={siteTitleClass}>
+            {siteTitle}
           </h1>
           {siteDescription ? (
             <p className={`${zenType.caption} ${textMuted} font-mono normal-case tracking-wide break-words leading-relaxed`}>
@@ -332,8 +343,8 @@ export function ConsoleHeader({
         <div className="hidden md:grid md:grid-cols-3 gap-6 items-center">
         {/* Left: App Logo/Branding (Single Word KOMARI) */}
         <div className="text-left min-w-0">
-          <h1 className={`text-3xl font-black tracking-tight normal-case ${textPrimary} select-none break-words`}>
-            {siteName}
+          <h1 className={siteTitleClass}>
+            {siteTitle}
           </h1>
           {siteDescription ? (
             <p className={`${zenType.caption} mt-1 max-w-md ${textMuted} font-mono normal-case tracking-wide break-words leading-relaxed`}>

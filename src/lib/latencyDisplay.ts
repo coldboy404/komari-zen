@@ -1,6 +1,12 @@
+import { parseThemeSelectOption } from "@/lib/themeOptionValue";
+
 export type LatencySample = { ms: number; t: number };
 
-export const LATENCY_HISTORY_LEN = 10;
+/** CPU / mem / disk bar segment count in NodeTable. */
+export const METRIC_BAR_SEGMENTS = 10;
+
+/** Latency sparkline blocks — 2× segments, rendered half-size in the same bar width. */
+export const LATENCY_HISTORY_LEN = METRIC_BAR_SEGMENTS * 2;
 
 export type LatencyColorMode = "Fixed" | "MeanDelta";
 
@@ -149,7 +155,9 @@ export function mergeLatencyHistory(
 }
 
 export function parseLatencyColorMode(raw: unknown): LatencyColorMode {
-  return raw === "MeanDelta" ? "MeanDelta" : "Fixed";
+  return parseThemeSelectOption(raw, "Fixed") === "MeanDelta"
+    ? "MeanDelta"
+    : "Fixed";
 }
 
 export function parseThemeNumber(raw: unknown, fallback: number): number {

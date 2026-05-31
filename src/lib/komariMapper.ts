@@ -4,7 +4,7 @@ import type { VPSNode } from "@/types";
 import type { LatencySample } from "@/lib/latencyDisplay";
 import { LATENCY_HISTORY_LEN } from "@/lib/latencyDisplay";
 import {
-  formatLoad,
+  formatLoadAverage,
   formatUptime,
   resolveDiskUsedGb,
   resolveSwapUsedGb,
@@ -165,9 +165,8 @@ export function mapKomariNodeToVps(
     cpuVendor: node.cpu_name,
     cpuUsage,
     load5:
-      online && live
-        ? formatLoad(live.load.load1, live.load.load5, live.load.load15)
-        : "—",
+      online && live ? formatLoadAverage(live.load.load1) : "—",
+    systemLoad1: online && live ? live.load.load1 : 0,
     memoryTotal,
     memoryUsed,
     swapTotal,
