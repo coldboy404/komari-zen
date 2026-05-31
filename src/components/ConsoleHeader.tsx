@@ -9,6 +9,10 @@ import { Settings, Globe } from "lucide-react";
 import { VPSNode } from "../types";
 import { translations, Lang, getLangMenuLabel, LANG_MENU_OPTIONS } from "../lib/i18n";
 import { usePublicInfo } from "@/contexts/PublicInfoContext";
+import {
+  useThemeSettings,
+  type LogoShape,
+} from "@/hooks/useThemeSettings";
 import type { ThemePreference } from "@/hooks/useThemePreference";
 import { formatResourceUsageSummary, formatTrafficGb, resolveTrafficUsedGb } from "@/lib/formatUnits";
 import { zenType, zenTouch } from "@/lib/typography";
@@ -22,6 +26,48 @@ const NodeDistributionMap = lazy(() =>
     default: m.NodeDistributionMap,
   })),
 );
+
+const KOMARI_DEFAULT_LOGO_URL = "/favicon.ico";
+
+function logoShapeClass(shape: LogoShape) {
+  if (shape === "Circle") return "rounded-full";
+  if (shape === "Square") return "rounded-none";
+  return "rounded-md";
+}
+
+function HeaderLogo({
+  showLogo,
+  customLogoUrl,
+  logoShape,
+}: {
+  showLogo: boolean;
+  customLogoUrl: string;
+  logoShape: LogoShape;
+}) {
+  const logoUrl = customLogoUrl || KOMARI_DEFAULT_LOGO_URL;
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    setFailedUrl(null);
+  }, [logoUrl]);
+
+  if (!showLogo || !logoUrl || failedUrl === logoUrl) return null;
+
+  return (
+    <img
+      src={logoUrl}
+      alt=""
+      aria-hidden="true"
+      draggable={false}
+      decoding="async"
+      loading="eager"
+      onError={() => setFailedUrl(logoUrl)}
+      className={`h-[1.05em] w-[1.05em] shrink-0 object-cover bg-zen-elevate/40 ring-1 ring-zen-line ${logoShapeClass(
+        logoShape,
+      )}`}
+    />
+  );
+}
 
 function useStableMapNodes(nodes: VPSNode[]): NodeDistributionMapNode[] {
   const ref = useRef<NodeDistributionMapNode[]>([]);
@@ -174,6 +220,7 @@ export function ConsoleHeader({
   const langMenuRef = useRef<HTMLDivElement>(null);
   const t = translations[lang];
   const { publicInfo } = usePublicInfo();
+  const { showLogo, customLogoUrl, logoShape } = useThemeSettings();
   const siteName = publicInfo?.sitename || "Komari";
   const siteDescription = publicInfo?.description?.trim();
   const mapNodes = useStableMapNodes(nodes);
@@ -259,12 +306,17 @@ export function ConsoleHeader({
   const btnHoverColor = "hover:text-zen-accent";
 
   const siteTitleClass = `text-3xl font-black tracking-tight normal-case ${textPrimary} select-none break-words`;
-  const siteTitle = (
+  const renderSiteTitle = () => (
     <Link
       to="/"
-      className="text-inherit no-underline decoration-transparent hover:text-inherit focus-visible:outline-none"
+      className="inline-flex max-w-full items-center gap-2 text-inherit no-underline decoration-transparent hover:text-inherit focus-visible:outline-none"
     >
-      {siteName}
+      <HeaderLogo
+        showLogo={showLogo}
+        customLogoUrl={customLogoUrl}
+        logoShape={logoShape}
+      />
+      <span className="min-w-0 break-words">{siteName}</span>
     </Link>
   );
 
@@ -382,7 +434,7 @@ export function ConsoleHeader({
       <div className={view === "detail" ? "pb-4 md:pb-5 border-b border-zen-line" : "pb-8 md:pb-10"}>
         <div className="md:hidden space-y-1">
           <h1 className={siteTitleClass}>
-            {siteTitle}
+            {renderSiteTitle()}
           </h1>
           {siteDescription ? (
             <p className={`${zenType.caption} ${textMuted} font-mono normal-case tracking-wide break-words leading-relaxed`}>
@@ -408,7 +460,7 @@ export function ConsoleHeader({
         {/* Left: App Logo/Branding (Single Word KOMARI) */}
         <div className="text-left min-w-0">
           <h1 className={siteTitleClass}>
-            {siteTitle}
+            {renderSiteTitle()}
           </h1>
           {siteDescription ? (
             <p className={`${zenType.caption} mt-1 max-w-md ${textMuted} font-mono normal-case tracking-wide break-words leading-relaxed`}>

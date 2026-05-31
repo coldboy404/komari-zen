@@ -17,6 +17,9 @@ import {
 } from "@/lib/latencyDisplay";
 
 export type ThemeSettings = {
+  showLogo: boolean;
+  customLogoUrl: string;
+  logoShape: LogoShape;
   offlineServerPosition: string;
   showExpiryTime: boolean;
   customFooterHtml: string;
@@ -30,11 +33,23 @@ export type ThemeSettings = {
   fontScheme: FontSchemeSettings;
 };
 
+export type LogoShape = "Circle" | "RoundedSquare" | "Square";
+
+function parseLogoShape(raw: unknown): LogoShape {
+  const shape = parseThemeSelectOption(raw, "RoundedSquare");
+  if (shape === "Circle" || shape === "Square") return shape;
+  return "RoundedSquare";
+}
+
 export function useThemeSettings(): ThemeSettings {
   const { publicInfo } = usePublicInfo();
   const raw = (publicInfo?.theme_settings ?? {}) as Record<string, unknown>;
 
   return {
+    showLogo: raw.showLogo === true,
+    customLogoUrl:
+      typeof raw.customLogoUrl === "string" ? raw.customLogoUrl.trim() : "",
+    logoShape: parseLogoShape(raw.logoShape),
     offlineServerPosition: parseThemeSelectOption(
       raw.offlineServerPosition,
       "Last",

@@ -2,7 +2,7 @@
   "name": "Komari Zen",
   "short": "Zen",
   "description": "基于极简主义设计理念的 Komari 主题。",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "author": "qwer-xyz",
   "url": "https://github.com/qwer-xyz/komari-zen",
   "preview": "preview.png",
@@ -19,6 +19,46 @@
           "zh-CN": "通用"
         },
         "type": "title"
+      },
+      {
+        "key": "showLogo",
+        "type": "switch",
+        "name": {
+          "en": "Show logo",
+          "zh-CN": "显示 Logo"
+        },
+        "default": false,
+        "help": {
+          "en": "Show logo beside title.",
+          "zh-CN": "在标题旁显示 Logo。"
+        }
+      },
+      {
+        "key": "customLogoUrl",
+        "type": "string",
+        "name": {
+          "en": "Custom logo URL",
+          "zh-CN": "Logo 图片地址"
+        },
+        "default": "",
+        "help": {
+          "en": "Empty uses /favicon.ico.",
+          "zh-CN": "留空使用 /favicon.ico。"
+        }
+      },
+      {
+        "key": "logoShape",
+        "type": "select",
+        "name": {
+          "en": "Logo shape",
+          "zh-CN": "Logo 形状"
+        },
+        "options": "圆形,圆角,方形",
+        "default": "圆角",
+        "help": {
+          "en": "Logo crop shape.",
+          "zh-CN": "Logo 裁切形状。"
+        }
       },
       {
         "key": "offlineServerPosition",
