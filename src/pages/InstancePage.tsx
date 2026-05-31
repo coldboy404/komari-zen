@@ -4,11 +4,12 @@
  */
 
 import React, { useLayoutEffect } from "react";
-import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { NodeDetail } from "@/components/NodeDetail";
 import { useNodeRecent } from "@/hooks/useNodeRecent";
 import { translations } from "@/lib/i18n";
 import { zenType } from "@/lib/typography";
+import { zenText } from "@/lib/zenSemantics";
 import type { AppOutletContext } from "@/layouts/AppLayout";
 
 export default function InstancePage() {
@@ -27,12 +28,12 @@ export default function InstancePage() {
     window.scrollTo(0, 0);
   }, [uuid]);
 
-  const textMutedClass =
-    theme === "dark" ? "text-neutral-500/85" : "text-neutral-500";
+  const textMutedClass = `${zenText.subtle}/85`;
 
   return (
     <section>
       {node ? (
+        <div key={node.id}>
         <NodeDetail
           node={node}
           lang={lang}
@@ -40,17 +41,19 @@ export default function InstancePage() {
           recentRecords={recentRecords}
           onBack={() => navigate("/")}
         />
+        </div>
       ) : (
         <div
           className={`py-12 text-center ${textMutedClass} uppercase zen-track-tight ${zenType.data} leading-relaxed font-mono space-y-4`}
         >
           <p>{t.selectVpsInput}</p>
-          <Link
-            to="/"
-            className="inline-block text-emerald-500 hover:underline normal-case tracking-normal"
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            className="inline-block text-zen-accent hover:underline normal-case tracking-normal cursor-pointer bg-transparent border-0 font-inherit"
           >
             [ {t.backToList} ]
-          </Link>
+          </button>
         </div>
       )}
     </section>

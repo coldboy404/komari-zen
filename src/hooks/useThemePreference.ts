@@ -1,29 +1,21 @@
 import { useEffect, useState } from "react";
+import {
+  detectSystemTheme,
+  readThemePreference,
+  syncDocumentThemeClass,
+  writeThemePreference,
+  type ResolvedTheme,
+  type ThemePreference,
+} from "@/lib/themePreferenceStorage";
 
-export type ThemePreference = "auto" | "light" | "dark";
-export type ResolvedTheme = "light" | "dark";
-
-const STORAGE_KEY = "komari-zen-theme";
-
-function readStored(): ThemePreference {
-  try {
-    const v = localStorage.getItem(STORAGE_KEY);
-    if (v === "light" || v === "dark" || v === "auto") return v;
-  } catch {
-    /* ignore */
-  }
-  return "auto";
-}
-
-function detectSystemTheme(): ResolvedTheme {
-  if (typeof window === "undefined" || !window.matchMedia) return "light";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
-}
+export type { ResolvedTheme, ThemePreference };
 
 export function useThemePreference() {
-  const [preference, setPreferenceState] = useState<ThemePreference>(readStored);
+  const [preference, setPreferenceState] = useState<ThemePreference>(() => {
+    const stored = readThemePreference();
+    syncDocumentThemeClass(stored);
+    return stored;
+  });
   const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(detectSystemTheme);
 
   useEffect(() => {
@@ -38,21 +30,16 @@ export function useThemePreference() {
 
   const setPreference = (next: ThemePreference) => {
     setPreferenceState(next);
-    try {
-      localStorage.setItem(STORAGE_KEY, next);
-    } catch {
-      /* ignore */
-    }
+    writeThemePreference(next);
+    syncDocumentThemeClass(next);
   };
 
   const theme: ResolvedTheme =
     preference === "auto" ? systemTheme : preference;
 
   useEffect(() => {
-    const root = document.documentElement;
-    root.classList.toggle("dark", theme === "dark");
-    root.style.colorScheme = theme;
-  }, [theme]);
+    syncDocumentThemeClass(preference);
+  }, [preference, systemTheme]);
 
   return { preference, theme, setPreference };
 }

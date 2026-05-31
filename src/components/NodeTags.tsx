@@ -11,6 +11,8 @@ import {
   getTagSeparatorClass,
   getTagTextClass,
 } from "@/lib/tagColorStyles";
+import { zenPopover } from "@/lib/zenSemantics";
+import { zenMotion } from "@/lib/zenMotion";
 
 interface NodeTagsProps {
   tags: string;
@@ -162,10 +164,7 @@ function TagOverflow({
   const [coords, setCoords] = React.useState({ top: 0, left: 0 });
   const [visible, setVisible] = React.useState(false);
 
-  const panelClass =
-    theme === "dark"
-      ? "border border-neutral-800/50 bg-zen-surface/95 text-neutral-300 shadow-[0_4px_16px_rgba(0,0,0,0.35)]"
-      : "border border-neutral-300/25 bg-zen-surface/95 text-neutral-600 shadow-[0_4px_14px_rgba(0,0,0,0.06)]";
+  const panelClass = zenPopover;
 
   const reposition = React.useCallback(() => {
     const trigger = triggerRef.current;
@@ -225,9 +224,8 @@ function TagOverflow({
               top: coords.top,
               left: coords.left,
               zIndex: 9999,
-              opacity: visible ? 1 : 0,
             }}
-            className={`inline-flex max-w-[min(320px,calc(100vw-16px))] flex-wrap items-center gap-x-1 rounded-sm px-2 py-1 font-mono ${panelClass}`}
+            className={`inline-flex max-w-[min(320px,calc(100vw-16px))] flex-wrap items-center gap-x-1 rounded-sm px-2 py-1 font-mono ${panelClass} ${zenMotion.popover} ${visible ? `${zenMotion.popoverVisible} pointer-events-auto` : "pointer-events-none"}`}
             onMouseEnter={showPanel}
             onMouseLeave={hidePanel}
           >

@@ -190,6 +190,152 @@
       },
       {
         "name": {
+          "en": "Color scheme",
+          "zh-CN": "配色"
+        },
+        "type": "title"
+      },
+      {
+        "key": "colorPreset",
+        "type": "select",
+        "name": {
+          "en": "Color preset",
+          "zh-CN": "配色方案"
+        },
+        "options": "暖色 Warm,红色 Red,黄色 Yellow,绿色 Green,蓝色 Blue,紫色 Purple",
+        "default": "暖色 Warm",
+        "help": {
+          "en": "Site-wide color palette. Warm is the default neutral tone; Red / Yellow / Green / Blue / Purple use a soft tinted background with a clear theme accent.",
+          "zh-CN": "全站配色方案。暖色为默认中性基调；红 / 黄 / 绿 / 蓝 / 紫 五套为柔和染色背景 + 清晰主题 accent，不过艳。"
+        }
+      },
+      {
+        "key": "customBgLight",
+        "type": "string",
+        "name": {
+          "en": "Custom page background (light)",
+          "zh-CN": "自定义页面背景（亮色）"
+        },
+        "default": "",
+        "help": {
+          "en": "Optional #RRGGBB override for light mode page background. Leave empty to use the preset.",
+          "zh-CN": "可选，格式 #RRGGBB，覆盖亮色模式页面背景。留空则使用预设。"
+        }
+      },
+      {
+        "key": "customBgDark",
+        "type": "string",
+        "name": {
+          "en": "Custom page background (dark)",
+          "zh-CN": "自定义页面背景（暗色）"
+        },
+        "default": "",
+        "help": {
+          "en": "Optional #RRGGBB override for dark mode page background. Leave empty to use the preset.",
+          "zh-CN": "可选，格式 #RRGGBB，覆盖暗色模式页面背景。留空则使用预设。"
+        }
+      },
+      {
+        "key": "customSurfaceLight",
+        "type": "string",
+        "name": {
+          "en": "Custom surface color (light)",
+          "zh-CN": "自定义卡片/弹层背景（亮色）"
+        },
+        "default": "",
+        "help": {
+          "en": "Optional #RRGGBB override for light mode raised surfaces. Leave empty to use the preset.",
+          "zh-CN": "可选，格式 #RRGGBB，覆盖亮色模式卡片与弹层背景。留空则使用预设。"
+        }
+      },
+      {
+        "key": "customSurfaceDark",
+        "type": "string",
+        "name": {
+          "en": "Custom surface color (dark)",
+          "zh-CN": "自定义卡片/弹层背景（暗色）"
+        },
+        "default": "",
+        "help": {
+          "en": "Optional #RRGGBB override for dark mode raised surfaces. Leave empty to use the preset.",
+          "zh-CN": "可选，格式 #RRGGBB，覆盖暗色模式卡片与弹层背景。留空则使用预设。"
+        }
+      },
+      {
+        "key": "customAccentLight",
+        "type": "string",
+        "name": {
+          "en": "Custom accent color (light)",
+          "zh-CN": "自定义强调色（亮色）"
+        },
+        "default": "",
+        "help": {
+          "en": "Optional #RRGGBB override for light mode accent and success colors. Leave empty to use the preset.",
+          "zh-CN": "可选，格式 #RRGGBB，覆盖亮色模式强调色与成功色。留空则使用预设。"
+        }
+      },
+      {
+        "key": "customAccentDark",
+        "type": "string",
+        "name": {
+          "en": "Custom accent color (dark)",
+          "zh-CN": "自定义强调色（暗色）"
+        },
+        "default": "",
+        "help": {
+          "en": "Optional #RRGGBB override for dark mode accent and success colors. Leave empty to use the preset.",
+          "zh-CN": "可选，格式 #RRGGBB，覆盖暗色模式强调色与成功色。留空则使用预设。"
+        }
+      },
+      {
+        "name": {
+          "en": "Typography",
+          "zh-CN": "字体"
+        },
+        "type": "title"
+      },
+      {
+        "key": "fontPreset",
+        "type": "select",
+        "name": {
+          "en": "Font preset",
+          "zh-CN": "字体方案"
+        },
+        "options": "默认 Default,等宽 MapleMonoCN,游梦 Yomeng,自定义 Custom",
+        "default": "默认 Default",
+        "help": {
+          "en": "Site-wide font. Default: Inter + JetBrains Mono (Google Fonts). MapleMonoCN / Yomeng load via zeoseven CDN. Custom: your own family and CSS URL.",
+          "zh-CN": "全站字体。默认：Inter + JetBrains Mono（Google Fonts）。等宽 / 游梦：zeoseven CDN 加载。自定义：自行填写字体名与 CSS 地址。"
+        }
+      },
+      {
+        "key": "fontFamilyCustom",
+        "type": "string",
+        "name": {
+          "en": "Custom font family",
+          "zh-CN": "自定义字体名称"
+        },
+        "default": "",
+        "help": {
+          "en": "When preset is Custom, the CSS font-family name (e.g. \"My Font\"). Leave empty to fall back to Default.",
+          "zh-CN": "选择「自定义」时填写 CSS font-family 名称（如 \"My Font\"）。留空则回退到默认字体。"
+        }
+      },
+      {
+        "key": "fontCssUrlCustom",
+        "type": "string",
+        "name": {
+          "en": "Custom font CSS URL",
+          "zh-CN": "自定义字体 CSS 地址"
+        },
+        "default": "",
+        "help": {
+          "en": "When preset is Custom, URL to a stylesheet that loads the font (e.g. CDN or self-hosted @font-face CSS). Leave empty to fall back to Default fonts.",
+          "zh-CN": "选择「自定义」时填写加载字体的 CSS 地址（CDN 或自托管 @font-face）。留空则回退到默认字体。"
+        }
+      },
+      {
+        "name": {
           "en": "Footer",
           "zh-CN": "页脚"
         },

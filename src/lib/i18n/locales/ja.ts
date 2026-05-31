@@ -139,5 +139,6 @@ export const ja = {
   privateRemark: "プライベートメモ",
   lblNodeDistribution: "ノード分布",
   mapScrollHint: "左右スワイプ",
+  btnClose: "閉じる",
   mapRegionTooltip: (code, online, total) => `${code} · ${online}/${total} オンライン`,
 } satisfies Messages;

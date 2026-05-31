@@ -8,9 +8,8 @@ type DashboardSkeletonProps = {
 };
 
 /** First-load placeholder that mirrors the header + node card grid. */
-export function DashboardSkeleton({ theme }: DashboardSkeletonProps) {
-  const block =
-    theme === "dark" ? "bg-neutral-800/60" : "bg-neutral-300/50";
+export function DashboardSkeleton(_props: DashboardSkeletonProps) {
+  const block = "bg-zen-fill-muted/50";
   const cardBorder = "border-zen-line bg-zen-elevate";
 
   const Bar = ({ className = "" }: { className?: string }) => (

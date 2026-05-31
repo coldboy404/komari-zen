@@ -8,10 +8,13 @@ import {
   formatLatencyTooltipTime,
   latencyBlockColor,
   METRIC_BAR_SEGMENTS,
+  metricWidgetClass,
   LATENCY_HISTORY_LEN,
   padLatencyHistory,
 } from "@/lib/latencyDisplay";
 import { zenType } from "@/lib/typography";
+import { zenInteractive, zenPopover } from "@/lib/zenSemantics";
+import { zenMotion } from "@/lib/zenMotion";
 
 interface LatencyHistoryBlocksProps {
   samples: LatencySample[];
@@ -60,8 +63,6 @@ type LatencyBlockProps = {
 };
 
 const SLOT_WIDTH_CH = METRIC_BAR_SEGMENTS / LATENCY_HISTORY_LEN;
-/** Horizontal squeeze — 20 glyphs in the same width as 10 full ■ blocks. */
-const BLOCK_SCALE_X = SLOT_WIDTH_CH;
 
 function LatencyBlock({
   sample,
@@ -86,10 +87,7 @@ function LatencyBlock({
     return tip;
   }, [hasData, sample.t, sample.ms, colorConfig.mode, mean]);
 
-  const panelClass =
-    theme === "dark"
-      ? "border border-neutral-800/50 bg-zen-surface/95 text-neutral-300 shadow-[0_4px_16px_rgba(0,0,0,0.35)]"
-      : "border border-neutral-300/25 bg-zen-surface/95 text-neutral-600 shadow-[0_4px_14px_rgba(0,0,0,0.06)]";
+  const panelClass = zenPopover;
 
   const reposition = React.useCallback(() => {
     const trigger = triggerRef.current;
@@ -161,21 +159,27 @@ function LatencyBlock({
         role={hasData ? "button" : undefined}
         tabIndex={hasData ? 0 : undefined}
         aria-label={hasData ? tipText : undefined}
-        className={`inline-block shrink-0 text-center leading-none ${hasData ? `cursor-pointer ${colorClass}` : "cursor-default"}`}
-        style={{ width: `${SLOT_WIDTH_CH}ch` }}
+        className={`inline-flex shrink-0 items-end justify-center overflow-hidden leading-none ${
+          hasData ? `cursor-pointer ${colorClass}` : "cursor-default text-zen-fg-faint/80"
+        }`}
+        style={{ width: `${SLOT_WIDTH_CH}ch`, height: "1em" }}
         onMouseEnter={hasData ? showPanel : undefined}
         onMouseLeave={hasData ? hidePanel : undefined}
         onFocus={hasData ? showPanel : undefined}
         onBlur={hasData ? hidePanel : undefined}
         onClick={onClick}
       >
-        <span
-          aria-hidden
-          className="inline-block origin-bottom leading-none"
-          style={{ transform: `scaleX(${BLOCK_SCALE_X})` }}
-        >
-          {hasData ? "■" : "·"}
-        </span>
+        {hasData ? (
+          <span
+            aria-hidden
+            className="block w-full rounded-[0.5px] bg-current"
+            style={{ height: "0.52em" }}
+          />
+        ) : (
+          <span aria-hidden className="text-[0.65em] leading-none">
+            ·
+          </span>
+        )}
       </span>
       {hasData &&
         open &&
@@ -188,10 +192,9 @@ function LatencyBlock({
               top: coords.top,
               left: coords.left,
               zIndex: 9999,
-              opacity: visible ? 1 : 0,
               pointerEvents: pinned ? "auto" : "none",
             }}
-            className={`whitespace-nowrap rounded-sm px-2 py-1 font-mono ${zenType.caption} tracking-wide ${panelClass}`}
+            className={`whitespace-nowrap rounded-sm px-2 py-1 font-mono ${zenType.caption} tracking-wide ${panelClass} ${zenMotion.popover} ${visible ? zenMotion.popoverVisible : ""}`}
             onMouseEnter={showPanel}
             onMouseLeave={hidePanel}
             onClick={(e) => e.stopPropagation()}
@@ -221,9 +224,9 @@ export function LatencyHistoryBlocks({
   const valueLabel = formatLatencyMs(currentMs);
 
   return (
-    <span className={`inline-flex items-baseline font-mono ${className}`}>
-      <span className={`font-bold ${valueColor}`}>{valueLabel}</span>
-      <span className="ml-1 font-mono text-neutral-500/30">
+    <span className={`${metricWidgetClass} ${className}`.trim()}>
+      <span className={`text-right font-bold ${valueColor}`}>{valueLabel}</span>
+      <span className={`whitespace-nowrap ${zenInteractive.separator}`}>
         {"["}
         <span
           className="inline-flex items-baseline"

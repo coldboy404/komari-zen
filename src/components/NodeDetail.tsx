@@ -41,6 +41,9 @@ import { parseNodeTags } from "@/lib/parseNodeTags";
 import { useChartScrub } from "@/hooks/useChartScrub";
 import { useLiveSeries } from "@/hooks/useLiveSeries";
 import { zenType } from "@/lib/typography";
+import { zenBorder, zenFill, zenInteractive, zenPopover, zenText } from "@/lib/zenSemantics";
+import { zenMotion } from "@/lib/zenMotion";
+import { ZenTabControl } from "@/components/motion/ZenTabControl";
 
 interface NodeDetailProps {
   node: VPSNode;
@@ -52,6 +55,55 @@ interface NodeDetailProps {
 
 const isNum = (v: number | null): v is number =>
   v != null && Number.isFinite(v);
+
+function DetailSection({
+  children,
+  delay = 0,
+  className = "",
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`${zenMotion.detailSection} ${className}`.trim()}
+      style={{ "--zen-stagger-delay": `${delay}ms` } as React.CSSProperties}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Brief entrance animation when async panel finishes loading. */
+function useContentReveal(loading: boolean) {
+  const wasLoading = React.useRef(loading);
+  const [revealing, setRevealing] = React.useState(false);
+
+  React.useEffect(() => {
+    if (wasLoading.current && !loading) {
+      setRevealing(true);
+      const timer = window.setTimeout(() => setRevealing(false), 520);
+      wasLoading.current = loading;
+      return () => clearTimeout(timer);
+    }
+    wasLoading.current = loading;
+    if (loading) setRevealing(false);
+  }, [loading]);
+
+  return revealing;
+}
+
+function contentPanelMotion(busy: boolean, revealing: boolean) {
+  const base = "transition-[opacity,filter] duration-500 ease-out";
+  if (busy) {
+    return `${base} opacity-40 blur-[1.5px] pointer-events-none select-none`;
+  }
+  if (revealing) {
+    return `${base} ${zenMotion.contentReveal}`;
+  }
+  return `${base} opacity-100 blur-0`;
+}
 
 type ChartPt = { x: number; y: number; val: number };
 
@@ -102,11 +154,22 @@ function lastValidIndex(arr: (number | null)[]): number {
   return -1;
 }
 
+const ZEN_CHART = {
+  cpu: "var(--zen-chart-cpu)",
+  mem: "var(--zen-chart-mem)",
+  swap: "var(--zen-chart-swap)",
+  load: "var(--zen-chart-load)",
+  netIn: "var(--zen-chart-net-in)",
+  netOut: "var(--zen-chart-net-out)",
+  tcp: "var(--zen-chart-tcp)",
+  udp: "var(--zen-chart-udp)",
+} as const;
+
 const MiniLineChart = ({
   data,
   data2,
-  color = "#10b981",
-  color2 = "#8b5cf6",
+  color = ZEN_CHART.cpu,
+  color2 = ZEN_CHART.swap,
   maxVal = 100,
   unit = "%",
   unitMode = "percent",
@@ -244,7 +307,7 @@ const MiniLineChart = ({
   const gridLines = [0.25, 0.5, 0.75, 1];
 
   const strokeColor = theme === "dark" ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.04)";
-  const labelColor = theme === "dark" ? "text-neutral-500 font-mono" : "text-neutral-500 font-mono";
+  const labelColor = `${zenText.subtle} font-mono`;
 
   const isHovering = hoveredIndex !== null;
   const lastIdx1 = lastValidIndex(chartData);
@@ -299,11 +362,11 @@ const MiniLineChart = ({
       className="group py-2 flex flex-col space-y-3 cursor-crosshair"
     >
       <div className="flex items-center gap-3 select-none">
-        <span className={`shrink-0 font-extrabold tracking-wider uppercase ${zenType.body} ${theme === "dark" ? "text-neutral-300" : "text-neutral-700"} font-mono`}>{title}</span>
+        <span className={`shrink-0 font-extrabold tracking-wider uppercase ${zenType.body} ${zenText.primary} font-mono`}>{title}</span>
         <span className="h-px flex-1 bg-zen-line" aria-hidden />
         <div className={`shrink-0 flex items-center justify-end gap-2 sm:gap-3 ${zenType.data} font-mono select-none font-bold`}>
           {isHovering && (
-            <span className={`${zenType.label} text-neutral-600 dark:text-neutral-300 bg-neutral-500/10 px-1.5 py-0.5 rounded tracking-wide font-bold tabular-nums`}>
+            <span className={`${zenType.label} text-zen-fg-muted bg-zen-fill-muted/10 px-1.5 py-0.5 rounded tracking-wide font-bold tabular-nums`}>
               {hoverLabel}
             </span>
           )}
@@ -317,7 +380,7 @@ const MiniLineChart = ({
       <div className="relative pointer-events-none">
         {!hasData ? (
           <div
-            className={`h-28 sm:h-32 md:h-24 flex items-center justify-center ${zenType.caption} uppercase tracking-widest font-mono ${theme === "dark" ? "text-neutral-600" : "text-neutral-400"}`}
+            className={`h-28 sm:h-32 md:h-24 flex items-center justify-center ${zenType.caption} uppercase tracking-widest font-mono ${zenText.faint}`}
           >
             {messages.noHistory}
           </div>
@@ -468,8 +531,8 @@ const MiniLineChart = ({
           <div
             className={`absolute z-10 pointer-events-none px-2 py-1.5 rounded shadow-lg border ${zenType.caption} font-mono flex flex-col gap-0.5 select-none max-w-[min(280px,calc(100vw-2rem))] ${
               theme === "dark"
-                ? "bg-zen-surface border-neutral-800 text-neutral-100"
-                : "bg-zen-surface border-neutral-200 text-neutral-800"
+                ? "bg-zen-surface border-zen-border-muted text-zen-fg-strong"
+                : "bg-zen-surface border-zen-border text-zen-fg-strong"
             }`}
             style={{
               left: `${(activeX / width) * 100}%`,
@@ -677,7 +740,7 @@ export function NodeDetail({
                 <div className={`w-full h-full rounded-[1px] transition-all duration-300 ${colorClass}`} />
               ) : (
                 <div className={`w-[2px] h-[2px] rounded-full transition-all duration-300 ${
-                  theme === "dark" ? "bg-neutral-700" : "bg-neutral-400/70"
+                  zenFill.track
                 }`} />
               )}
             </div>
@@ -691,10 +754,10 @@ export function NodeDetail({
   const diskPercent = node.online ? (node.diskUsed / node.diskTotal) * 100 : 0;
 
   // Design accent variables
-  const textPrimary = theme === "dark" ? "text-neutral-300" : "text-neutral-700";
-  const textMuted = theme === "dark" ? "text-neutral-400 font-medium" : "text-neutral-600 font-medium";
-  const textBody = theme === "dark" ? "text-neutral-300" : "text-neutral-700";
-  const textSecondary = theme === "dark" ? "text-neutral-400" : "text-neutral-600";
+  const textPrimary = zenText.primary;
+  const textMuted = zenText.muted;
+  const textBody = zenText.primary;
+  const textSecondary = zenText.secondary;
 
   const SectionHeading = ({ children }: { children: React.ReactNode }) => (
     <div className="flex items-center gap-3">
@@ -762,6 +825,17 @@ export function NodeDetail({
     load: liveSamples.map((s) => s.load1),
   };
   const liveHasData = liveSamples.length > 0;
+  const metricsReveal = useContentReveal(isLoadLoading);
+  const pingReveal = useContentReveal(isPingLoading);
+  const liveReveal = useContentReveal(liveMode && !liveHasData);
+  const metricsPanelClass = contentPanelMotion(isLoadLoading, metricsReveal);
+  const pingPanelClass = contentPanelMotion(isPingLoading, pingReveal);
+  const livePanelClass =
+    liveMode && !liveHasData
+      ? "transition-opacity duration-500 ease-out opacity-35"
+      : liveReveal
+        ? `${zenMotion.contentReveal} transition-opacity duration-500 ease-out opacity-100`
+        : "transition-opacity duration-500 ease-out opacity-100";
   // Approximate window span in hours for the hover "time ago" label.
   const liveTimeRange = Math.max(1, liveSamples.length) * 2 / 3600;
   const pick = <T,>(liveVal: T, histVal: T): T => (liveMode ? liveVal : histVal);
@@ -787,7 +861,7 @@ export function NodeDetail({
   const cpuLoadExtraSeries: ChartExtraSeries[] = [
     {
       data: normLoadSeries(live.load, loadHist.values),
-      color: "#f59e0b",
+      color: ZEN_CHART.load,
       label: t.lblLoad1m,
       formatValue: formatLoadChartValue,
     },
@@ -838,7 +912,7 @@ export function NodeDetail({
   return (
     <div className={`font-sans ${zenType.body} select-none space-y-6 md:space-y-8 pt-1 pb-4`}>
       {/* Title block — back inline with node name */}
-      <div className="space-y-2.5 md:space-y-3">
+      <DetailSection delay={0} className="space-y-2.5 md:space-y-3">
         <div className="flex flex-col gap-2.5 md:flex-row md:items-center md:justify-between md:gap-x-10 lg:gap-x-14">
           <div className="min-w-0 flex-1">
             <span
@@ -857,8 +931,8 @@ export function NodeDetail({
                   aria-label={t.backToList}
                   className={`group inline-flex shrink-0 items-center gap-1.5 rounded-md border border-zen-line px-2.5 py-1.5 font-mono ${zenType.caption} font-bold tracking-wider uppercase leading-none cursor-pointer transition-all ${
                     theme === "dark"
-                      ? "bg-zen-surface/50 text-neutral-400 hover:border-neutral-600 hover:text-neutral-200 hover:bg-zen-elevate"
-                      : "bg-zen-surface/80 text-neutral-500 hover:border-neutral-400 hover:text-neutral-800 hover:bg-neutral-100"
+                      ? "bg-zen-surface/50 text-zen-fg-muted hover:border-zen-fg-muted hover:text-zen-fg-strong hover:bg-zen-elevate"
+                      : "bg-zen-surface/80 text-zen-fg-subtle hover:border-zen-fg-faint hover:text-zen-fg-strong hover:bg-zen-fill-muted/20"
                   }`}
                 >
                   <ArrowLeft className="h-3.5 w-3.5 transition-transform duration-200 group-hover:-translate-x-0.5" />
@@ -903,19 +977,19 @@ export function NodeDetail({
             </div>
           ) : null}
         </div>
-      </div>
+      </DetailSection>
 
       {showNodeMeta ? (
-        <div className="space-y-2.5">
+        <DetailSection delay={60} className="space-y-2.5">
           {hasPublicRemark ? (
             <div
               className={`font-mono ${zenType.data} leading-relaxed ${
-                theme === "dark" ? "text-neutral-400" : "text-neutral-600"
+                zenText.secondary
               }`}
             >
               <span
                 className={`mb-1 block ${zenType.label} font-bold uppercase zen-track-tight ${
-                  theme === "dark" ? "text-neutral-500" : "text-neutral-400"
+                  zenText.subtle
                 }`}
               >
                 {t.publicRemark}
@@ -928,12 +1002,12 @@ export function NodeDetail({
           {hasPrivateRemark ? (
             <div
               className={`font-mono ${zenType.data} leading-relaxed ${
-                theme === "dark" ? "text-neutral-400" : "text-neutral-600"
+                zenText.secondary
               }`}
             >
               <span
                 className={`mb-1 block ${zenType.label} font-bold uppercase zen-track-tight ${
-                  theme === "dark" ? "text-neutral-500" : "text-neutral-400"
+                  zenText.subtle
                 }`}
               >
                 {t.privateRemark}
@@ -943,7 +1017,7 @@ export function NodeDetail({
               </p>
             </div>
           ) : null}
-        </div>
+        </DetailSection>
       ) : null}
 
       {node.online ? (
@@ -951,7 +1025,7 @@ export function NodeDetail({
           {/* Main 2x2 Mono Section Grid */}
           <div className="grid grid-cols-1 gap-x-16 gap-y-8 md:grid-cols-2 pt-2">
             {/* Column 1: Hardware Specifications */}
-            <div className="space-y-4">
+            <DetailSection delay={80} className="space-y-4">
               <SectionHeading>{t.hardwareSpec}</SectionHeading>
               <div className={`grid grid-cols-2 gap-y-3 ${zenType.data} font-mono border-b pb-6 border-transparent`}>
                 <span className={textMuted}>{t.lblCpuVendor}</span>
@@ -1021,10 +1095,10 @@ export function NodeDetail({
                   {formatUpdatedAt(node.updatedAt)}
                 </span>
               </div>
-            </div>
+            </DetailSection>
 
             {/* Column 2: System Loads & Memory */}
-            <div className="space-y-4">
+            <DetailSection delay={140} className="space-y-4">
               <SectionHeading>{t.capacityLoads}</SectionHeading>
               <div className="space-y-6">
                 <div>
@@ -1032,7 +1106,7 @@ export function NodeDetail({
                     <span>{t.lblCpuLoadUtil}</span>
                     <span className={`font-black ${textPrimary} font-mono text-xs`}>{node.cpuUsage.toFixed(1)}%</span>
                   </div>
-                  {renderProgressBar(node.cpuUsage, "bg-emerald-500/80")}
+                  {renderProgressBar(node.cpuUsage, "bg-zen-accent/80")}
                   <div className={`${zenType.caption} ${textMuted} mt-2 font-mono`}>
                     {t.lblLoadAvg} [{node.load5}]
                   </div>
@@ -1045,7 +1119,7 @@ export function NodeDetail({
                       {formatStoragePair(node.memoryUsed, node.memoryTotal)}
                     </span>
                   </div>
-                  {renderProgressBar(memPercent, "bg-blue-500/80")}
+                  {renderProgressBar(memPercent, "bg-zen-chart-mem/80")}
                   <div className={`${zenType.caption} ${textMuted} mt-2 font-mono`}>
                     SWAP: {formatStoragePair(node.swapUsed, node.swapTotal)}
                   </div>
@@ -1058,7 +1132,7 @@ export function NodeDetail({
                       {node.diskUsed.toFixed(1)} GB / {node.diskTotal.toFixed(1)} GB
                     </span>
                   </div>
-                  {renderProgressBar(diskPercent, "bg-amber-500/80")}
+                  {renderProgressBar(diskPercent, "bg-zen-chart-load/80")}
                 </div>
 
                 {/* Network RX/TX */}
@@ -1072,7 +1146,7 @@ export function NodeDetail({
                     <div className="space-y-2">
                       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2">
                         <span className={`inline-flex items-center gap-1.5 min-w-0 whitespace-nowrap ${textMuted} uppercase font-bold tracking-wider`}>
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-zen-chart-net-in animate-pulse shrink-0" />
                           {t.lblInboundRxShort}
                         </span>
                         <span className={`font-black ${textPrimary} whitespace-nowrap shrink-0 tabular-nums`}>
@@ -1081,7 +1155,7 @@ export function NodeDetail({
                       </div>
                       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2">
                         <span className={`inline-flex items-center gap-1.5 min-w-0 whitespace-nowrap ${textMuted} uppercase font-bold tracking-wider`}>
-                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shrink-0" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-zen-chart-net-out animate-pulse shrink-0" />
                           {t.lblOutboundTxShort}
                         </span>
                         <span className={`font-black ${textPrimary} whitespace-nowrap shrink-0 tabular-nums`}>
@@ -1110,7 +1184,7 @@ export function NodeDetail({
                     </div>
                   </div>
                   {node.bandwidthTotal > 0 && (
-                    <div className={`flex justify-between items-baseline pt-3 mt-3 border-t border-neutral-500/10 ${zenType.caption} font-mono`}>
+                    <div className={`flex justify-between items-baseline pt-3 mt-3 border-t ${zenBorder.line} ${zenType.caption} font-mono`}>
                       <span className={`${textMuted} uppercase font-bold tracking-wider`}>
                         {getTrafficTypeLabel(node.trafficLimitType, {
                           sum: t.trafficTypeSum,
@@ -1125,12 +1199,12 @@ export function NodeDetail({
                   )}
                 </div>
               </div>
-            </div>
+            </DetailSection>
           </div>
 
           {/* [05] UNIFIED DYNAMIC HARDWARE TIMESERIES & SYSTEM PROCESS TELEMETRY / LATENCY MONITORING */}
           {recordEnabled && (
-          <div className="space-y-6 pt-6">
+          <DetailSection delay={200} className="space-y-6 pt-6">
             <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3">
               <div className="flex justify-center md:justify-start min-w-0">
                 <span className={`font-extrabold ${zenType.body} zen-track-tight uppercase ${textSecondary} font-mono`}>
@@ -1140,37 +1214,23 @@ export function NodeDetail({
                 </span>
               </div>
 
-              <div className={`flex flex-wrap items-center justify-center gap-2 ${zenType.data} select-none shrink-0`}>
-                <button
-                  type="button"
-                  onClick={() => setSubSection("metrics")}
-                  className={`relative zen-touch-btn px-1 cursor-pointer uppercase tracking-widest font-black transition-all duration-250 ${
-                    subSection === "metrics"
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
-                  }`}
-                >
-                  {t.tabMetrics}
-                  {subSection === "metrics" && (
-                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-[2px] bg-emerald-500 rounded-full" />
-                  )}
-                </button>
-                <span className={`text-neutral-300 dark:text-neutral-800 font-light ${zenType.caption} select-none`}>/</span>
-                <button
-                  type="button"
-                  onClick={() => setSubSection("latency")}
-                  className={`relative zen-touch-btn px-1 cursor-pointer uppercase tracking-widest font-black transition-all duration-250 ${
-                    subSection === "latency"
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
-                  }`}
-                >
-                  {t.tabLatency}
-                  {subSection === "latency" && (
-                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-[2px] bg-emerald-500 rounded-full" />
-                  )}
-                </button>
-              </div>
+              <ZenTabControl
+                tabs={[
+                  { id: "metrics", label: t.tabMetrics },
+                  { id: "latency", label: t.tabLatency },
+                ]}
+                value={subSection}
+                onChange={(id) =>
+                  setSubSection(id as "metrics" | "latency")
+                }
+                separator={
+                  <span className={`${zenInteractive.tabDivider} ${zenType.caption}`}>
+                    /
+                  </span>
+                }
+                tabClassName={`px-1 zen-touch-btn uppercase tracking-widest font-black ${zenType.data}`}
+                className="gap-2 shrink-0"
+              />
 
               <div className="flex justify-center md:justify-end min-w-0">
                 <HistoryRangeSelector
@@ -1196,10 +1256,10 @@ export function NodeDetail({
                 <div className="absolute inset-0 z-30 flex items-center justify-center select-none bg-transparent pointer-events-none">
                   <div className={`px-4 py-2.5 ${zenType.caption} uppercase font-bold zen-track-tight font-mono flex items-center gap-2.5 border rounded-sm shadow-sm ${
                     theme === "dark"
-                      ? "bg-zen-surface/95 border-neutral-800 text-emerald-500"
-                      : "bg-zen-surface/95 border-neutral-200/80 text-emerald-600"
+                      ? "bg-zen-surface/95 border-zen-border-muted text-zen-accent"
+                      : "bg-zen-surface/95 border-zen-border text-zen-accent"
                   }`}>
-                    <svg className="animate-spin h-3.5 w-3.5 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg className="animate-spin h-3.5 w-3.5 text-zen-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
@@ -1212,10 +1272,10 @@ export function NodeDetail({
                 <div className="absolute inset-0 z-30 flex items-center justify-center select-none bg-transparent pointer-events-none">
                   <div className={`px-4 py-2.5 ${zenType.caption} uppercase font-bold zen-track-tight font-mono flex items-center gap-2.5 border rounded-sm shadow-sm ${
                     theme === "dark"
-                      ? "bg-zen-surface/95 border-neutral-800 text-emerald-500"
-                      : "bg-zen-surface/95 border-neutral-200/80 text-emerald-600"
+                      ? "bg-zen-surface/95 border-zen-border-muted text-zen-accent"
+                      : "bg-zen-surface/95 border-zen-border text-zen-accent"
                   }`}>
-                    <svg className="animate-spin h-3.5 w-3.5 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg className="animate-spin h-3.5 w-3.5 text-zen-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
@@ -1227,11 +1287,11 @@ export function NodeDetail({
               {subSection === "metrics" ? (
                 <>
                   {/* Sub-grid of 4 charts */}
-                  <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 transition-all duration-300 ${isLoadLoading ? "blur-[1.5px] opacity-40 select-none pointer-events-none" : ""}`}>
+                  <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${metricsPanelClass} ${liveMode ? livePanelClass : ""}`}>
                     {/* Chart 1: CPU Utilisation */}
                     <MiniLineChart
                       data={pick(live.cpu, displayedCpuHistory)}
-                      color="#10b981"
+                      color={ZEN_CHART.cpu}
                       maxVal={100}
                       unitMode="percent"
                       title={t.cpu}
@@ -1256,8 +1316,8 @@ export function NodeDetail({
                     <MiniLineChart
                       data={pick(live.mem, displayedMemHistory)}
                       data2={pick(live.swap, displayedSwapHistory)}
-                      color="#3b82f6"
-                      color2="#8b5cf6"
+                      color={ZEN_CHART.mem}
+                      color2={ZEN_CHART.swap}
                       maxVal={100}
                       unitMode="percent"
                       title={t.lblMemoryUsage}
@@ -1270,7 +1330,7 @@ export function NodeDetail({
                       timestamps={chartTimestamps}
                       subMetrics={
                         <div className={`grid grid-cols-2 ${zenType.caption} font-mono leading-tight`}>
-                          <div className="flex justify-between pr-4 border-r border-neutral-500/10">
+                          <div className={`flex justify-between pr-4 border-r ${zenBorder.line}`}>
                             <span className={textMuted}>RAM:</span>
                             <span className={textPrimary}>{formatStoragePair(node.memoryUsed, node.memoryTotal)}</span>
                           </div>
@@ -1285,7 +1345,7 @@ export function NodeDetail({
                     {/* Chart 3: Disk Partition Map */}
                     <MiniLineChart
                       data={pick(live.disk, displayedDiskHistory)}
-                      color="#f59e0b"
+                      color={ZEN_CHART.load}
                       maxVal={100}
                       unitMode="percent"
                       title={t.lblDiskCoverage}
@@ -1309,8 +1369,8 @@ export function NodeDetail({
                     <MiniLineChart
                       data={pick(live.netIn, displayedNetInHistory)}
                       data2={pick(live.netOut, displayedNetOutHistory)}
-                      color="#14b8a6"
-                      color2="#f43f5e"
+                      color={ZEN_CHART.netIn}
+                      color2={ZEN_CHART.netOut}
                       maxVal={pick(
                         Math.max(1, ...live.netIn, ...live.netOut),
                         netRawMax,
@@ -1326,13 +1386,13 @@ export function NodeDetail({
                       timestamps={chartTimestamps}
                       subMetrics={
                         <div className={`grid grid-cols-2 ${zenType.caption} font-mono leading-tight`}>
-                          <div className="flex justify-between pr-4 border-r border-neutral-500/10">
+                          <div className={`flex justify-between pr-4 border-r ${zenBorder.line}`}>
                             <span className={textMuted}>RX:</span>
-                            <span className="text-[#14b8a6] font-bold">{formatSpeed(node.netSpeedIn)}</span>
+                            <span className="text-zen-chart-net-in font-bold">{formatSpeed(node.netSpeedIn)}</span>
                           </div>
                           <div className="flex justify-between pl-4">
                             <span className={textMuted}>TX:</span>
-                            <span className="text-[#f43f5e] font-bold">{formatSpeed(node.netSpeedOut)}</span>
+                            <span className="text-zen-chart-net-out font-bold">{formatSpeed(node.netSpeedOut)}</span>
                           </div>
                         </div>
                       }
@@ -1340,13 +1400,13 @@ export function NodeDetail({
                   </div>
 
                   {/* Integrated connection & processes flow metrics */}
-                  <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 transition-all duration-300 ${isLoadLoading ? "blur-[1.5px] opacity-40 select-none pointer-events-none" : ""}`}>
+                  <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 ${metricsPanelClass} ${liveMode ? livePanelClass : ""}`}>
                     {/* Chart 5: Network Connections TCP/UDP */}
                     <MiniLineChart
                       data={pick(live.tcp, displayedTcpHistory)}
                       data2={pick(live.udp, displayedUdpHistory)}
-                      color="#10b981"
-                      color2="#8b5cf6"
+                      color={ZEN_CHART.tcp}
+                      color2={ZEN_CHART.udp}
                       maxVal={pick(
                         Math.max(120, ...live.tcp, ...live.udp, 10),
                         Math.max(120, ...numOnly(displayedTcpHistory), ...numOnly(displayedUdpHistory), 10),
@@ -1362,13 +1422,13 @@ export function NodeDetail({
                       timestamps={chartTimestamps}
                       subMetrics={
                         <div className={`grid grid-cols-2 ${zenType.caption} font-mono leading-tight`}>
-                          <div className="flex justify-between pr-4 border-r border-neutral-500/10">
+                          <div className={`flex justify-between pr-4 border-r ${zenBorder.line}`}>
                             <span className={textMuted}>TCP:</span>
-                            <span className="text-[#10b981] font-bold">{node.tcpConnections ?? 0} {t.unitConnections}</span>
+                            <span className="text-zen-chart-tcp font-bold">{node.tcpConnections ?? 0} {t.unitConnections}</span>
                           </div>
                           <div className="flex justify-between pl-4">
                             <span className={textMuted}>UDP:</span>
-                            <span className="text-[#8b5cf6] font-bold">{node.udpConnections ?? 0} {t.unitConnections}</span>
+                            <span className="text-zen-chart-udp font-bold">{node.udpConnections ?? 0} {t.unitConnections}</span>
                           </div>
                         </div>
                       }
@@ -1377,7 +1437,7 @@ export function NodeDetail({
                     {/* Chart 6: Active Processes Count */}
                     <MiniLineChart
                       data={pick(live.proc, displayedProcessesHistory)}
-                      color="#f59e0b"
+                      color={ZEN_CHART.load}
                       maxVal={pick(
                         Math.max(200, ...live.proc, 10),
                         Math.max(200, ...numOnly(displayedProcessesHistory), 10),
@@ -1392,7 +1452,7 @@ export function NodeDetail({
                       timestamps={chartTimestamps}
                       subMetrics={
                         <div className={`flex justify-between items-center ${zenType.caption} font-mono ${textMuted}`}>
-                          <span>{t.lblActiveProcesses} <span className="text-[#f59e0b] font-bold">{node.processesCount ?? 0}</span></span>
+                          <span>{t.lblActiveProcesses} <span className="text-zen-chart-load font-bold">{node.processesCount ?? 0}</span></span>
                           <span>{t.lblStatusOk}</span>
                         </div>
                       }
@@ -1400,7 +1460,7 @@ export function NodeDetail({
                   </div>
                 </>
               ) : (
-                <div className={`transition-all duration-350 min-h-52 sm:min-h-56 md:min-h-60 ${isPingLoading ? "blur-[1.5px] opacity-40 select-none pointer-events-none" : ""}`}>
+                <div className={`min-h-52 sm:min-h-56 md:min-h-60 ${pingPanelClass}`}>
                 <LatencyProbePanel
                   uuid={node.id}
                   hours={selectedPingHours}
@@ -1413,10 +1473,11 @@ export function NodeDetail({
                 </div>
               )}
             </div>
-          </div>
+          </DetailSection>
           )}
         </>
       ) : (
+        <DetailSection delay={80}>
         <div className="py-20 text-center text-red-500 flex flex-col items-center justify-center space-y-4 font-sans select-none">
           <span className="text-base font-extrabold tracking-widest text-red-500 uppercase">{t.vpsHostOffline}</span>
           <p className={`max-w-md ${textSecondary} ${zenType.data} uppercase tracking-wider leading-relaxed`}>
@@ -1426,6 +1487,7 @@ export function NodeDetail({
             {t.msgNodeOfflineAwaiting}
           </div>
         </div>
+        </DetailSection>
       )}
     </div>
   );

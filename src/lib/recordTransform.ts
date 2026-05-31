@@ -14,16 +14,21 @@ import {
   type LatencySample,
 } from "@/lib/latencyDisplay";
 
-const PING_COLORS = [
-  "#3b82f6",
-  "#f97316",
-  "#10b981",
-  "#ec4899",
-  "#a855f7",
-  "#06b6d4",
-  "#eab308",
-  "#ef4444",
-];
+/** Distinct probe line colors — follow active chart tokens so presets stay coherent. */
+const PING_COLOR_VARS = [
+  "var(--zen-chart-mem)",
+  "var(--zen-chart-load)",
+  "var(--zen-chart-cpu)",
+  "var(--zen-chart-net-out)",
+  "var(--zen-chart-swap)",
+  "var(--zen-chart-net-in)",
+  "var(--zen-chart-udp)",
+  "var(--zen-danger)",
+] as const;
+
+export function taskColor(index: number): string {
+  return PING_COLOR_VARS[index % PING_COLOR_VARS.length];
+}
 
 export type LoadTotals = {
   memTotal: number;
@@ -373,10 +378,6 @@ export function buildMetricHistory(
   return { values: Array(targetLen).fill(0), hasData: false };
 }
 
-export function taskColor(index: number): string {
-  return PING_COLORS[index % PING_COLORS.length];
-}
-
 export function aggregateLatency(tasks: PingTaskInfo[]): number {
   const values = tasks
     .map((t) => t.latest ?? t.avg)
@@ -535,6 +536,96 @@ export function buildProbeSeriesFromRows(
     const v = r[key];
     return typeof v === "number" && Number.isFinite(v) ? v : 0;
   });
+}
+
+/** Like {@link buildProbeSeriesFromRows} but preserves null gaps for broken line charts. */
+export function buildProbeSeriesNullableFromRows(
+  rows: Array<{ time: string; [key: string]: string | number | null }>,
+  taskId: number,
+): (number | null)[] {
+  const key = String(taskId);
+  return rows.map((r) => {
+    const v = r[key];
+    return typeof v === "number" && Number.isFinite(v) ? v : null;
+  });
+}
+
+export function downsampleSeriesNullable(
+  values: (number | null)[],
+  targetLen: number,
+): (number | null)[] {
+  if (targetLen <= 0) return [];
+  if (values.length === 0) return Array(targetLen).fill(null);
+  if (values.length === targetLen) return values.slice();
+  if (values.length === 1) {
+    const only = values[0];
+    return Array(targetLen).fill(only);
+  }
+
+  const result: (number | null)[] = [];
+  for (let i = 0; i < targetLen; i++) {
+    const pos = (i / (targetLen - 1)) * (values.length - 1);
+    const idx = Math.round(pos);
+    const v = values[Math.min(values.length - 1, idx)];
+    result.push(v != null && Number.isFinite(v) ? v : null);
+  }
+  return result;
+}
+
+export function downsampleSeriesAvgNullable(
+  values: (number | null)[],
+  targetLen: number,
+): (number | null)[] {
+  if (targetLen <= 0) return [];
+  if (values.length === 0) return Array(targetLen).fill(null);
+  if (values.length <= targetLen) return downsampleSeriesNullable(values, targetLen);
+
+  const result: (number | null)[] = [];
+  for (let i = 0; i < targetLen; i++) {
+    const start = Math.floor((i * values.length) / targetLen);
+    const end = Math.max(
+      start + 1,
+      Math.floor(((i + 1) * values.length) / targetLen),
+    );
+    let sum = 0;
+    let count = 0;
+    for (let j = start; j < end && j < values.length; j++) {
+      const v = values[j];
+      if (v == null || !Number.isFinite(v)) continue;
+      sum += v;
+      count++;
+    }
+    result.push(count > 0 ? sum / count : null);
+  }
+  return result;
+}
+
+/** Centered triangular MA that skips null gaps. */
+export function smoothSeriesTriangularNullable(
+  values: (number | null)[],
+  radius = 2,
+): (number | null)[] {
+  if (radius <= 0 || values.length < 3) return values.slice();
+  const n = values.length;
+  const out: (number | null)[] = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const current = values[i];
+    if (current == null || !Number.isFinite(current)) {
+      out[i] = null;
+      continue;
+    }
+    let sum = 0;
+    let weight = 0;
+    for (let j = Math.max(0, i - radius); j <= Math.min(n - 1, i + radius); j++) {
+      const v = values[j];
+      if (v == null || !Number.isFinite(v)) continue;
+      const w = radius + 1 - Math.abs(i - j);
+      sum += v * w;
+      weight += w;
+    }
+    out[i] = weight > 0 ? sum / weight : current;
+  }
+  return out;
 }
 
 export function buildProbeSeries(

@@ -139,5 +139,6 @@ export const en = {
   privateRemark: "Private Remark",
   lblNodeDistribution: "NODE DISTRIBUTION",
   mapScrollHint: "Swipe horizontally",
+  btnClose: "Close",
   mapRegionTooltip: (code, online, total) => `${code} · ${online}/${total} online`,
 } satisfies Messages;

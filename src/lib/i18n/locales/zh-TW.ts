@@ -138,5 +138,6 @@ export const zhTW = {
   privateRemark: "私有備註",
   lblNodeDistribution: "節點分布",
   mapScrollHint: "左右滑動",
+  btnClose: "關閉",
   mapRegionTooltip: (code, online, total) => `${code} · ${online}/${total} 在線`,
 } satisfies Messages;

@@ -10,6 +10,8 @@ import { translations } from "@/lib/i18n";
 import { resolveCountryCode } from "@/lib/regionCode";
 import { worldMapData } from "@/lib/worldMapData";
 import { zenType } from "@/lib/typography";
+import { zenPopover, zenText } from "@/lib/zenSemantics";
+import { zenMotion } from "@/lib/zenMotion";
 
 type RegionNode = {
   id: string;
@@ -38,6 +40,8 @@ interface NodeDistributionMapProps {
   nodes: VPSNode[];
   theme: "light" | "dark";
   lang: Lang;
+  /** Inline section on mobile; modal body on desktop popup. */
+  presentation?: "inline" | "modal";
 }
 
 const MAP_W = worldMapData.w;
@@ -155,10 +159,7 @@ function RegionClusterPanel({
   className?: string;
 }) {
   const t = translations[lang];
-  const shellClass =
-    theme === "dark"
-      ? "bg-neutral-900/95 border-neutral-700 text-neutral-200"
-      : "bg-zen-surface/95 border-neutral-200 text-neutral-700";
+  const shellClass = `${zenPopover} font-mono normal-case ${zenType.caption} tracking-normal`;
 
   return (
     <div
@@ -171,17 +172,19 @@ function RegionClusterPanel({
         {cluster.nodes.map((node) => (
           <li
             key={node.id}
-            className={`flex items-start gap-1.5 leading-snug min-w-0 ${
+            className={`flex items-center gap-1.5 leading-snug min-w-0 ${
               node.online ? "" : "opacity-60"
             }`}
           >
             <span
-              className={`shrink-0 ${node.online ? "text-emerald-500" : "text-neutral-500"}`}
+              className={`shrink-0 ${node.online ? "text-zen-accent" : zenText.subtle}`}
               aria-hidden
             >
               {node.online ? "●" : "○"}
             </span>
-            <span className="break-all">{node.name}</span>
+            <span className="min-w-0 flex-1 truncate" title={node.name}>
+              {node.name}
+            </span>
           </li>
         ))}
       </ul>
@@ -209,13 +212,16 @@ export const NodeDistributionMap = React.memo(function NodeDistributionMap({
   nodes,
   theme,
   lang,
+  presentation = "inline",
 }: NodeDistributionMapProps) {
+  const isModal = presentation === "modal";
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hovered, setHovered] = useState<RegionCluster | null>(null);
   const [tapped, setTapped] = useState<RegionCluster | null>(null);
   const [mapLayout, setMapLayout] = useState<MapLayout | null>(null);
+  const hoverClearTimerRef = useRef<number | null>(null);
   const [isDesktop, setIsDesktop] = useState(
     () => typeof window !== "undefined" && window.matchMedia(DESKTOP_MQ).matches,
   );
@@ -316,9 +322,10 @@ export const NodeDistributionMap = React.memo(function NodeDistributionMap({
   }, [theme, isDesktop]);
 
   const t = translations[lang];
-  const textMuted = theme === "dark" ? "text-neutral-500" : "text-neutral-500";
-  const markerFillOnline = theme === "dark" ? "#34d399" : "#10b981";
+  const textMuted = zenText.subtle;
+  const markerFillOnline = "var(--zen-accent)";
   const markerFillOffline = theme === "dark" ? "#737373" : "#a3a3a3";
+  const effectiveDesktop = isModal || isDesktop;
 
   if (clusters.length === 0) return null;
 
@@ -326,44 +333,90 @@ export const NodeDistributionMap = React.memo(function NodeDistributionMap({
     setTapped((prev) => (prev?.code === cluster.code ? null : cluster));
   };
 
-  return (
-    <section aria-label={t.lblNodeDistribution} className="w-full max-md:-mx-4 max-md:w-[calc(100%+2rem)]">
-      <div className="flex items-center gap-3 mb-1 md:mb-2.5 max-md:px-4">
-        <span
-          className={`${zenType.section} zen-track-tight ${textMuted} font-mono uppercase shrink-0`}
-        >
-          {t.lblNodeDistribution}
-        </span>
-        <span className="h-px flex-1 bg-zen-line" aria-hidden />
-        <span
-          className={`md:hidden shrink-0 ${zenType.caption} ${textMuted} font-mono normal-case tracking-normal`}
-        >
-          {t.mapScrollHint}
-        </span>
-      </div>
+  const showClusterTooltip = (cluster: RegionCluster) => {
+    if (hoverClearTimerRef.current !== null) {
+      window.clearTimeout(hoverClearTimerRef.current);
+      hoverClearTimerRef.current = null;
+    }
+    setHovered(cluster);
+  };
 
-      <div className="max-md:relative">
-        <div
-          className={`pointer-events-none absolute inset-y-0 left-0 z-[1] w-5 md:hidden bg-gradient-to-r ${
-            theme === "dark" ? "from-zen-bg/95" : "from-zen-bg/90"
-          } to-transparent`}
-          aria-hidden
-        />
-        <div
-          className={`pointer-events-none absolute inset-y-0 right-0 z-[1] w-6 md:hidden bg-gradient-to-l ${
-            theme === "dark" ? "from-zen-bg/95" : "from-zen-bg/90"
-          } to-transparent`}
-          aria-hidden
-        />
+  const hideClusterTooltip = () => {
+    if (hoverClearTimerRef.current !== null) {
+      window.clearTimeout(hoverClearTimerRef.current);
+    }
+    hoverClearTimerRef.current = window.setTimeout(() => {
+      setHovered(null);
+      hoverClearTimerRef.current = null;
+    }, 64);
+  };
+
+  useEffect(
+    () => () => {
+      if (hoverClearTimerRef.current !== null) {
+        window.clearTimeout(hoverClearTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  return (
+    <section
+      aria-label={isModal ? undefined : t.lblNodeDistribution}
+      className={isModal ? "w-full" : "w-full max-md:-mx-4 max-md:w-[calc(100%+2rem)]"}
+    >
+      {!isModal ? (
+        <div className="flex items-center gap-3 mb-1 md:mb-2.5 max-md:px-4">
+          <span
+            className={`${zenType.section} zen-track-tight ${textMuted} font-mono uppercase shrink-0`}
+          >
+            {t.lblNodeDistribution}
+          </span>
+          <span className="h-px flex-1 bg-zen-line" aria-hidden />
+          <span
+            className={`md:hidden shrink-0 ${zenType.caption} ${textMuted} font-mono normal-case tracking-normal`}
+          >
+            {t.mapScrollHint}
+          </span>
+        </div>
+      ) : null}
+
+      <div className={isModal ? undefined : "max-md:relative"}>
+        {!isModal ? (
+          <>
+            <div
+              className={`pointer-events-none absolute inset-y-0 left-0 z-[1] w-5 md:hidden bg-gradient-to-r ${
+                theme === "dark" ? "from-zen-bg/95" : "from-zen-bg/90"
+              } to-transparent`}
+              aria-hidden
+            />
+            <div
+              className={`pointer-events-none absolute inset-y-0 right-0 z-[1] w-6 md:hidden bg-gradient-to-l ${
+                theme === "dark" ? "from-zen-bg/95" : "from-zen-bg/90"
+              } to-transparent`}
+              aria-hidden
+            />
+          </>
+        ) : null}
 
         <div
           ref={scrollRef}
-          className="max-md:overflow-x-auto max-md:overscroll-x-contain max-md:snap-x max-md:snap-mandatory max-md:touch-pan-y max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden"
+          className={
+            isModal
+              ? undefined
+              : "max-md:overflow-x-auto max-md:overscroll-x-contain max-md:snap-x max-md:snap-mandatory max-md:touch-pan-y max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden"
+          }
         >
           <div
             ref={containerRef}
-            className="relative mx-auto aspect-[2/1] touch-manipulation max-md:min-w-[720px] max-md:w-[720px] max-md:shrink-0 max-md:snap-center md:w-full md:max-h-none lg:w-[min(100%,1120px)] xl:w-[min(100%,1280px)]"
-            style={!isDesktop ? { width: MOBILE_MAP_WIDTH, minWidth: MOBILE_MAP_WIDTH } : undefined}
+            className={
+              isModal
+                ? "relative mx-auto aspect-[2/1] w-full touch-manipulation"
+                : "relative mx-auto aspect-[2/1] touch-manipulation max-md:min-w-[720px] max-md:w-[720px] max-md:shrink-0 max-md:snap-center md:w-full md:max-h-none lg:w-[min(100%,1120px)] xl:w-[min(100%,1280px)]"
+            }
+            style={
+              !effectiveDesktop ? { width: MOBILE_MAP_WIDTH, minWidth: MOBILE_MAP_WIDTH } : undefined
+            }
           >
         <canvas
           ref={canvasRef}
@@ -391,17 +444,17 @@ export const NodeDistributionMap = React.memo(function NodeDistributionMap({
           {clusters.map((cluster, index) => {
             const hasOnline = cluster.online > 0;
             const fill = hasOnline ? markerFillOnline : markerFillOffline;
-            const r = isDesktop ? 5 : 6.5;
+            const r = effectiveDesktop ? 5 : 6.5;
             const isTapped = tapped?.code === cluster.code;
             const twinkleDelay = `${((index * 0.83) % 3.6).toFixed(2)}s`;
-            const hitRadius = isDesktop ? 14 : 26;
+            const hitRadius = effectiveDesktop ? 14 : 26;
 
             return (
               <g
                 key={cluster.code}
-                onMouseEnter={isDesktop ? () => setHovered(cluster) : undefined}
-                onMouseLeave={isDesktop ? () => setHovered(null) : undefined}
-                onClick={!isDesktop ? () => toggleTapped(cluster) : undefined}
+                onMouseEnter={effectiveDesktop ? () => showClusterTooltip(cluster) : undefined}
+                onMouseLeave={effectiveDesktop ? hideClusterTooltip : undefined}
+                onClick={!effectiveDesktop ? () => toggleTapped(cluster) : undefined}
               >
                 <circle
                   cx={cluster.x}
@@ -453,19 +506,21 @@ export const NodeDistributionMap = React.memo(function NodeDistributionMap({
           })}
         </svg>
 
-        {isDesktop && hovered && mapLayout ? (
+        {effectiveDesktop && hovered && mapLayout ? (
           <div
-            className="pointer-events-none absolute z-10 hidden md:block w-[max(9rem,min(11rem,42vw))]"
+            className={`pointer-events-none absolute z-10 w-[max(9rem,min(11rem,42vw))] ${isModal ? "block" : "hidden md:block"}`}
             style={desktopTooltipStyle(hovered, mapLayout)}
           >
-            <RegionClusterPanel cluster={hovered} theme={theme} lang={lang} />
+            <div key={hovered.code} className={zenMotion.fadeIn}>
+              <RegionClusterPanel cluster={hovered} theme={theme} lang={lang} />
+            </div>
           </div>
         ) : null}
           </div>
         </div>
       </div>
 
-      {!isDesktop && tapped ? (
+      {!isModal && !effectiveDesktop && tapped ? (
         <div className="md:hidden mt-2 max-md:px-4">
           <RegionClusterPanel cluster={tapped} theme={theme} lang={lang} />
         </div>

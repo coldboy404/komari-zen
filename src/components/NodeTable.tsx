@@ -27,7 +27,14 @@ import { OsIcon } from "@/components/OsIcon";
 import { NodeTags } from "@/components/NodeTags";
 import { PublicRemarkButton } from "@/components/PublicRemarkButton";
 import { LatencyHistoryBlocks } from "@/components/LatencyHistoryBlocks";
+import {
+  METRIC_BAR_SEGMENTS,
+  metricWidgetClass,
+} from "@/lib/latencyDisplay";
 import { zenType, zenTouch } from "@/lib/typography";
+import { zenBorder, zenFill, zenInteractive, zenText } from "@/lib/zenSemantics";
+import { zenMotion } from "@/lib/zenMotion";
+import { ZenTabControl } from "@/components/motion/ZenTabControl";
 
 interface NodeTableProps {
   nodes: VPSNode[];
@@ -73,6 +80,30 @@ function getOSDetails(os: string, arch: string) {
   if (archKey === "X86_64") archKey = "AMD64";
 
   return { text: `${osKey} ${archKey}` };
+}
+
+function MetricAsciiBar({
+  percent,
+  colorClass,
+  textPrimaryClass,
+}: {
+  percent: number;
+  colorClass: string;
+  textPrimaryClass: string;
+}) {
+  const filled = Math.round((percent / 100) * METRIC_BAR_SEGMENTS);
+  const empty = Math.max(0, METRIC_BAR_SEGMENTS - filled);
+  return (
+    <span className={`${metricWidgetClass} ${textPrimaryClass}`}>
+      <span className={`text-right font-bold ${colorClass}`}>{percent.toFixed(1)}%</span>
+      <span className={`whitespace-nowrap ${zenInteractive.separator}`}>
+        {"["}
+        <span className={colorClass}>{"■".repeat(filled)}</span>
+        {"·".repeat(empty)}
+        {"]"}
+      </span>
+    </span>
+  );
 }
 
 export function NodeTable({
@@ -211,9 +242,9 @@ export function NodeTable({
       billingLabels,
     );
     const urgentClass = billing.isExpired
-      ? "text-rose-500 font-bold"
+      ? "text-zen-danger font-bold"
       : billing.isUrgent
-        ? "text-rose-500 font-bold animate-pulse"
+        ? "text-zen-danger font-bold animate-pulse"
         : "";
     return (
       <span className={`${textPrimary} font-bold ${urgentClass}`}>
@@ -223,9 +254,7 @@ export function NodeTable({
   };
 
   const trafficTypeBadgeClass =
-    theme === "dark"
-      ? "bg-neutral-800/80 text-neutral-400 border border-neutral-700/60"
-      : "bg-neutral-100 text-neutral-500 border border-neutral-200/80";
+    "bg-zen-fill-muted/80 text-zen-fg-muted border border-zen-border-muted";
 
   const renderTrafficValue = (node: VPSNode) => (
     <span className="inline-flex items-center gap-1.5 min-w-0">
@@ -330,79 +359,50 @@ export function NodeTable({
   };
 
   // Styling helpers
-  const textPrimary = theme === "dark" ? "text-neutral-300" : "text-neutral-700";
-  const textMuted = theme === "dark" ? "text-neutral-400 font-medium" : "text-neutral-600 font-medium";
+  const textPrimary = zenText.primary;
+  const textMuted = zenText.muted;
   const borderBottomClass = "border-zen-line-strong";
-  const toolbarPanelClass =
-    theme === "dark"
-      ? "border-neutral-700/55 bg-zen-elevate/15"
-      : "border-zen-line-strong bg-zen-elevate/20";
+  const toolbarPanelClass = "border-zen-border-muted bg-zen-elevate/15";
   const groupChipIdle =
-    theme === "dark"
-      ? "border border-neutral-600/90 text-neutral-400 hover:border-neutral-500 hover:text-neutral-200"
-      : "border border-neutral-400/90 text-neutral-500 hover:border-neutral-500 hover:text-neutral-700";
-  const groupChipActive =
-    theme === "dark"
-      ? "border border-neutral-600 bg-neutral-700 text-neutral-100 shadow-sm"
-      : "border border-neutral-700 bg-neutral-800 text-neutral-50 shadow-sm";
+    "border border-zen-border text-zen-fg-subtle hover:border-zen-fg-muted hover:text-zen-fg-strong";
   const segmentTrackClass =
-    theme === "dark"
-      ? "border border-neutral-600/90 bg-neutral-900/50"
-      : "border border-neutral-400/85 bg-neutral-200/45";
-  const segmentActiveClass =
-    theme === "dark"
-      ? "bg-neutral-700 text-neutral-100 shadow-sm"
-      : "bg-zen-surface text-neutral-800 shadow-sm";
+    "border border-zen-border bg-zen-fill-muted/30";
 
-  const renderGroupChip = (label: string, value: string, isActive: boolean) => (
-    <button
-      type="button"
-      data-group-active={isActive ? "true" : undefined}
-      onClick={() => setActiveGroup(value)}
-      className={`shrink-0 snap-start cursor-pointer rounded-full px-3.5 py-1.5 font-mono ${zenType.caption} zen-track-tight transition-colors ${
-        isActive ? `${groupChipActive} font-black` : `${groupChipIdle} font-bold`
-      }`}
-    >
-      {label}
-    </button>
+  const groupTabItems = useMemo(
+    () => [
+      { id: ALL_NODE_GROUP, label: allGroupsLabel(lang) },
+      ...nodeGroups.map((group) => ({ id: group, label: group })),
+    ],
+    [lang, nodeGroups],
   );
 
-  const renderGroupTextTab = (label: string, value: string, isActive: boolean) => (
-    <button
-      type="button"
-      onClick={() => setActiveGroup(value)}
-      className={`cursor-pointer font-sans ${zenType.caption} zen-track-tight transition-all ${
-        isActive ? `${textPrimary} font-black` : `${textMuted} hover:text-emerald-500`
-      }`}
-    >
-      {label}
-    </button>
+  const viewModeTabs = useMemo(
+    () => [
+      { id: "list" as const, label: t.list },
+      { id: "card" as const, label: t.card },
+    ],
+    [t.list, t.card],
   );
 
-  const renderDesktopGroupTabs = () => {
-    const items: React.ReactNode[] = [
-      renderGroupTextTab(allGroupsLabel(lang), ALL_NODE_GROUP, activeGroup === ALL_NODE_GROUP),
-    ];
-    for (const group of nodeGroups) {
-      items.push(
-        <span
-          key={`sep-${group}`}
-          className={`select-none font-mono font-light ${zenType.caption} ${
-            theme === "dark" ? "text-neutral-600" : "text-neutral-400/70"
-          }`}
-          aria-hidden
-        >
-          {" / "}
-        </span>,
-      );
-      items.push(
-        <React.Fragment key={group}>
-          {renderGroupTextTab(group, group, activeGroup === group)}
-        </React.Fragment>,
-      );
-    }
+  const renderSortHeader = (field: SortField, label: string) => {
+    const isActive = sortField === field;
     return (
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-2 min-w-0">{items}</div>
+      <th
+        key={field}
+        className={`py-4 px-2 font-black cursor-pointer whitespace-nowrap ${zenMotion.sortHeader} ${
+          isActive ? "text-zen-accent" : "hover:text-zen-accent"
+        }`}
+        onClick={() => handleSort(field)}
+      >
+        {label}
+        <span
+          className={`inline-block transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.34,1.45,0.64,1)] ${
+            isActive ? "scale-110 opacity-100" : "opacity-55"
+          }`}
+        >
+          {getSortIndicator(field)}
+        </span>
+      </th>
     );
   };
 
@@ -421,12 +421,14 @@ export function NodeTable({
           <button
             type="button"
             onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
-            className={`cursor-pointer select-none font-bold flex items-center gap-1 uppercase leading-none ${textPrimary}`}
+            className={`cursor-pointer select-none font-bold flex items-center gap-1 uppercase leading-none transition-[color,transform] duration-300 ease-[cubic-bezier(0.34,1.45,0.64,1)] active:scale-[0.97] ${
+              isSortMenuOpen ? "text-zen-accent" : textPrimary
+            }`}
           >
             {getFieldLabel(sortField)}
             {sortField !== "default" ? (
               <span
-                className="normal-case tracking-normal opacity-75"
+                className="normal-case tracking-normal opacity-75 transition-transform duration-300"
                 aria-label={sortOrder === "asc" ? t.sortAsc : t.sortDesc}
               >
                 {getSortOrderIcon(sortOrder)}
@@ -436,13 +438,13 @@ export function NodeTable({
           {isSortMenuOpen && (
             <>
               <div className="fixed inset-0 z-40 cursor-default" onClick={() => setIsSortMenuOpen(false)} />
-              <div className={`absolute right-0 top-full z-50 w-44 border overflow-hidden ${
+              <div className={`absolute right-0 top-full z-50 w-44 border overflow-hidden ${zenMotion.menuPanel} ${
                 theme === "dark"
-                  ? "bg-zen-bg border-neutral-800 text-neutral-300"
-                  : "bg-zen-bg border-neutral-200 text-neutral-700"
+                  ? "bg-zen-bg border-zen-border-muted text-zen-fg-muted"
+                  : "bg-zen-bg border-zen-border text-zen-fg-strong"
               }`}>
                 <div className={`px-2.5 py-1.5 border-b ${zenType.micro} zen-track-tight font-bold ${
-                  theme === "dark" ? "border-neutral-800 text-neutral-500" : "border-neutral-100 text-neutral-400"
+                  "border-zen-border-muted text-zen-fg-subtle"
                 }`}>
                   {t.selectSortMetric}
                 </div>
@@ -466,13 +468,13 @@ export function NodeTable({
                         }}
                         className={`w-full text-left px-3 py-2 md:py-1.5 ${zenType.caption} tracking-wider uppercase font-mono transition-colors flex items-center justify-between ${
                           isCurrent
-                            ? "bg-neutral-500/12 text-emerald-600 dark:text-emerald-400 font-bold"
-                            : "hover:bg-neutral-500/10"
+                            ? "bg-zen-fill-muted/12 text-zen-accent font-bold"
+                            : "hover:bg-zen-fill-muted/10"
                         }`}
                       >
                         <span>{opt.label}</span>
                         {isCurrent && opt.value !== "default" && (
-                          <span className={`text-emerald-500 ${zenType.micro}`}>
+                          <span className={`text-zen-accent ${zenType.micro}`}>
                             {getSortOrderIcon(sortOrder)}
                           </span>
                         )}
@@ -480,7 +482,7 @@ export function NodeTable({
                     );
                   })}
                 </div>
-                <div className="border-t p-1 border-neutral-500/15">
+                <div className="border-t p-1 border-zen-line">
                   <button
                     onClick={() => {
                       userSortedRef.current = true;
@@ -488,7 +490,7 @@ export function NodeTable({
                       setIsSortMenuOpen(false);
                     }}
                     aria-label={sortOrder === "asc" ? t.setSortDescending : t.setSortAscending}
-                    className={`w-full text-center px-1 py-1 ${zenType.caption} uppercase font-bold tracking-widest text-[#10b981] hover:underline transition-all`}
+                    className={`w-full text-center px-1 py-1 ${zenType.caption} uppercase font-bold tracking-widest text-zen-accent hover:underline transition-all`}
                   >
                     [ {getSortOrderIcon(sortOrder === "asc" ? "desc" : "asc")} ]
                   </button>
@@ -501,23 +503,8 @@ export function NodeTable({
     </div>
   );
 
-  const renderViewModeButton = (mode: "list" | "card", label: string) => {
-    const isActive = viewMode === mode;
-    return (
-      <button
-        type="button"
-        onClick={() => setViewMode(mode)}
-        className={`${zenTouch.btn} cursor-pointer rounded-full px-3.5 py-1 font-mono ${zenType.caption} zen-track-tight transition-colors ${
-          isActive ? `${segmentActiveClass} font-black` : `${textMuted} font-bold hover:text-emerald-600 dark:hover:text-emerald-400`
-        }`}
-      >
-        {label}
-      </button>
-    );
-  };
-
   return (
-    <div className={`w-full space-y-6 lg:space-y-8 font-sans ${zenType.body} ${theme === "dark" ? "text-neutral-300" : "text-neutral-700"}`}>
+    <div className={`w-full space-y-6 lg:space-y-8 font-sans ${zenType.body} ${zenText.primary}`}>
       {/* Mobile toolbar card */}
       <div
         className={`space-y-4 lg:hidden rounded-xl border p-4 ${toolbarPanelClass}`}
@@ -527,7 +514,7 @@ export function NodeTable({
             {groupScrollFade.left ? (
               <div
                 className={`pointer-events-none absolute inset-y-0 left-0 z-[1] w-3 bg-gradient-to-r ${
-                  theme === "dark" ? "from-neutral-900/80" : "from-zen-elevate/80"
+                  "from-zen-bg/80"
                 } to-transparent`}
                 aria-hidden
               />
@@ -535,20 +522,22 @@ export function NodeTable({
             {groupScrollFade.right ? (
               <div
                 className={`pointer-events-none absolute inset-y-0 right-0 z-[1] w-5 bg-gradient-to-l ${
-                  theme === "dark" ? "from-neutral-900/80" : "from-zen-elevate/80"
+                  "from-zen-bg/80"
                 } to-transparent`}
                 aria-hidden
               />
             ) : null}
-            <div
+            <ZenTabControl
               ref={groupScrollRef}
-              className="overflow-x-auto overscroll-x-contain scroll-smooth snap-x snap-mandatory touch-pan-x [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            >
-              <div className="flex w-max gap-2 py-0.5 pr-3">
-                {renderGroupChip(allGroupsLabel(lang), ALL_NODE_GROUP, activeGroup === ALL_NODE_GROUP)}
-                {nodeGroups.map((group) => renderGroupChip(group, group, activeGroup === group))}
-              </div>
-            </div>
+              variant="pill"
+              scrollable
+              tabs={groupTabItems}
+              value={activeGroup}
+              onChange={setActiveGroup}
+              tabClassName={`snap-start rounded-full px-3.5 py-1.5 font-mono ${zenType.caption} zen-track-tight font-bold`}
+              activeClassName="font-black text-zen-fg-strong"
+              idleClassName={groupChipIdle}
+            />
           </div>
         ) : null}
 
@@ -558,8 +547,16 @@ export function NodeTable({
               {t.viewMode}
             </span>
             <div className={`inline-flex rounded-full p-0.5 ${segmentTrackClass}`}>
-              {renderViewModeButton("list", t.list)}
-              {renderViewModeButton("card", t.card)}
+              <ZenTabControl
+                variant="pill"
+                tabs={viewModeTabs}
+                value={viewMode}
+                onChange={(id) => setViewMode(id as "list" | "card")}
+                tabClassName={`${zenTouch.btn} rounded-full px-3.5 py-1 font-mono ${zenType.caption} zen-track-tight font-bold`}
+                activeClassName="font-black text-zen-fg-strong"
+                idleClassName={`${textMuted} hover:text-zen-accent`}
+                className="gap-0.5"
+              />
             </div>
           </div>
           <div className="relative flex min-w-0 items-center">
@@ -569,13 +566,13 @@ export function NodeTable({
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={t.search}
               aria-label={t.search}
-              className={`w-full min-w-0 rounded-md border border-zen-line-strong bg-zen-elevate/15 px-3 py-2 outline-none transition-all font-mono ${zenType.body} tracking-wide uppercase ${textPrimary} placeholder:text-neutral-400/60`}
+              className={`w-full min-w-0 rounded-md border border-zen-line-strong bg-zen-elevate/15 px-3 py-2 outline-none transition-all font-mono ${zenType.body} tracking-wide uppercase ${textPrimary} placeholder:text-zen-fg-faint/60`}
             />
             {searchTerm ? (
               <button
                 type="button"
                 onClick={() => setSearchTerm("")}
-                className={`absolute right-2 text-neutral-400 hover:text-red-400 font-mono ${zenType.caption} cursor-pointer`}
+                className={`absolute right-2 ${zenInteractive.clear} font-mono ${zenType.caption} cursor-pointer`}
                 aria-label="Clear"
               >
                 [X]
@@ -590,29 +587,42 @@ export function NodeTable({
       {/* Desktop toolbar — original layout */}
       <div className="hidden lg:flex flex-col gap-8">
         <div className="flex flex-row items-baseline justify-between py-2">
-          {showGroupTabs ? renderDesktopGroupTabs() : <div />}
+          {showGroupTabs ? (
+            <ZenTabControl
+              tabs={groupTabItems}
+              value={activeGroup}
+              onChange={setActiveGroup}
+              separator={
+                <span
+                  className={`font-mono font-light ${zenType.caption} ${zenText.faint}/70`}
+                >
+                  {" / "}
+                </span>
+              }
+              tabClassName={`font-sans ${zenType.caption} zen-track-tight`}
+              activeClassName={`${textPrimary} font-black`}
+              idleClassName={`${textMuted} hover:text-zen-accent font-bold`}
+              className="flex-wrap gap-x-2 gap-y-2 min-w-0"
+            />
+          ) : (
+            <div />
+          )}
 
           <div className="flex flex-wrap items-center gap-x-8 gap-y-4 font-mono">
             <div className={`flex items-center gap-3 ${zenType.caption} tracking-[0.2em] uppercase`}>
               <span className={`${textMuted} shrink-0 leading-none`}>{t.viewMode}:</span>
-              <button
-                type="button"
-                onClick={() => setViewMode("list")}
-                className={`inline-flex items-center leading-none cursor-pointer py-0 transition-colors ${
-                  viewMode === "list" ? `${textPrimary} font-bold` : `${textMuted} hover:text-[#10b981]`
-                }`}
-              >
-                [ {t.list} ]
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("card")}
-                className={`inline-flex items-center leading-none cursor-pointer py-0 transition-colors ${
-                  viewMode === "card" ? `${textPrimary} font-bold` : `${textMuted} hover:text-[#10b981]`
-                }`}
-              >
-                [ {t.card} ]
-              </button>
+              <ZenTabControl
+                tabs={viewModeTabs.map((tab) => ({
+                  ...tab,
+                  label: `[ ${tab.label} ]`,
+                }))}
+                value={viewMode}
+                onChange={(id) => setViewMode(id as "list" | "card")}
+                tabClassName="inline-flex items-center leading-none py-0"
+                activeClassName={`${textPrimary} font-bold`}
+                idleClassName={`${textMuted} hover:text-zen-accent`}
+                className="gap-3"
+              />
             </div>
 
             <div className="flex items-baseline gap-2">
@@ -627,13 +637,13 @@ export function NodeTable({
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="..."
-                  className={`min-w-0 w-40 border-0 bg-transparent py-1 pl-1 pr-0 outline-none transition-all font-mono ${zenType.body} placeholder-neutral-550 tracking-wider uppercase ${textPrimary}`}
+                  className={`min-w-0 w-40 border-0 bg-transparent py-1 pl-1 pr-0 outline-none transition-all font-mono ${zenType.body} placeholder:text-zen-fg-faint tracking-wider uppercase ${textPrimary}`}
                 />
                 {searchTerm ? (
                   <button
                     type="button"
                     onClick={() => setSearchTerm("")}
-                    className={`shrink-0 py-1 leading-none text-neutral-400 hover:text-red-400 font-mono ${zenType.caption} cursor-pointer`}
+                    className={`shrink-0 py-1 leading-none ${zenInteractive.clear} font-mono ${zenType.caption} cursor-pointer`}
                   >
                     [X]
                   </button>
@@ -652,37 +662,19 @@ export function NodeTable({
           <table className="w-full min-w-[1100px] text-left select-none border-collapse">
             <thead>
               <tr className={`${textMuted} ${zenType.caption} zen-track-tight uppercase border-b ${borderBottomClass} whitespace-nowrap`}>
-                <th className="py-4 px-2 font-black cursor-pointer hover:text-[#10b981] whitespace-nowrap" onClick={() => handleSort("name")}>
-                  {t.name} {getSortIndicator("name")}
-                </th>
-                <th className="py-4 px-2 font-black cursor-pointer hover:text-[#10b981] whitespace-nowrap" onClick={() => handleSort("os")}>
-                  {t.os} {getSortIndicator("os")}
-                </th>
-                <th className="py-4 px-2 font-black cursor-pointer hover:text-[#10b981] whitespace-nowrap" onClick={() => handleSort("cpu")}>
-                  {t.cpu} {getSortIndicator("cpu")}
-                </th>
-                <th className="py-4 px-2 font-black cursor-pointer hover:text-[#10b981] whitespace-nowrap" onClick={() => handleSort("mem")} >
-                  {t.mem} {getSortIndicator("mem")}
-                </th>
-                <th className="py-4 px-2 font-black cursor-pointer hover:text-[#10b981] whitespace-nowrap" onClick={() => handleSort("disk")}>
-                  {t.diskspace} {getSortIndicator("disk")}
-                </th>
-                {latencyVisible && (
-                <th className="py-4 px-2 font-black cursor-pointer hover:text-[#10b981] whitespace-nowrap" onClick={() => handleSort("latency")}>
-                  {t.ping} {getSortIndicator("latency")}
-                </th>
-                )}
+                {renderSortHeader("name", t.name)}
+                {renderSortHeader("os", t.os)}
+                {renderSortHeader("cpu", t.cpu)}
+                {renderSortHeader("mem", t.mem)}
+                {renderSortHeader("disk", t.diskspace)}
+                {latencyVisible && renderSortHeader("latency", t.ping)}
                 <th className="py-4 px-2 font-black whitespace-nowrap">
                   {t.bandwidth}
                 </th>
                 <th className="py-4 px-2 font-black whitespace-nowrap">
                   {t.traffic}
                 </th>
-                {showExpiryTime && (
-                  <th className="py-4 px-2 font-black cursor-pointer hover:text-[#10b981] whitespace-nowrap" onClick={() => handleSort("days")}>
-                    {t.expiry} {getSortIndicator("days")}
-                  </th>
-                )}
+                {showExpiryTime && renderSortHeader("days", t.expiry)}
               </tr>
             </thead>
             <tbody className={`${zenType.data} font-mono whitespace-nowrap`}>
@@ -696,47 +688,32 @@ export function NodeTable({
                 sortedNodes.map((node) => {
                   const cpuColor =
                     node.cpuUsage > 75
-                      ? theme === "dark" 
-                        ? "text-rose-400 font-bold" 
-                        : "text-rose-500 font-bold" 
+                      ? "text-zen-danger font-bold" 
                       : node.cpuUsage > 40 
-                      ? theme === "dark" 
-                        ? "text-amber-400 font-bold" 
-                        : "text-amber-600 font-bold" 
+                      ? "text-zen-warning font-bold" 
                       : textPrimary;
 
                   const memPercent = (node.memoryUsed / node.memoryTotal) * 100;
                   const memColor =
                     memPercent > 80
-                      ? theme === "dark" 
-                        ? "text-rose-400 font-bold" 
-                        : "text-rose-500 font-bold" 
+                      ? "text-zen-danger font-bold" 
                       : memPercent > 50 
-                      ? theme === "dark" 
-                        ? "text-amber-400 font-bold" 
-                        : "text-amber-600 font-bold" 
+                      ? "text-zen-warning font-bold" 
                       : textPrimary;
 
-                  const cpuFilledDots = Math.round((node.cpuUsage / 100) * 10);
-                  const memFilledDots = Math.round((memPercent / 100) * 10);
                   const diskPercent = (node.diskUsed / node.diskTotal) * 100;
                   const diskColor =
                     diskPercent > 80
-                      ? theme === "dark" 
-                        ? "text-rose-400 font-bold" 
-                        : "text-rose-500 font-bold" 
+                      ? "text-zen-danger font-bold" 
                       : diskPercent > 50 
-                      ? theme === "dark" 
-                        ? "text-amber-400 font-bold" 
-                        : "text-amber-600 font-bold" 
+                      ? "text-zen-warning font-bold" 
                       : textPrimary;
-                  const diskFilledDots = Math.round((diskPercent / 100) * 10);
- 
+
                   return (
                     <tr
                       key={node.id}
                       onClick={() => onSelectNode(node)}
-                      className={`cursor-pointer transition-colors group border-b border-zen-line hover:bg-zen-elevate ${
+                      className={`cursor-pointer group border-b border-zen-line hover:bg-zen-elevate transition-[background-color,color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                         !node.online ? "opacity-35 grayscale contrast-75 saturate-50 select-none" : ""
                       }`}
                     >
@@ -782,49 +759,37 @@ export function NodeTable({
                       {/* CPU Live Load */}
                       <td className="py-3 px-2">
                         {node.online ? (
-                          <span className={textPrimary}>
-                            <span className={`font-bold ${cpuColor}`}>{node.cpuUsage.toFixed(1)}%</span>
-                            <span className="text-neutral-500/30 ml-1 font-mono">
-                              {"["}
-                              <span className={cpuColor}>{"■".repeat(cpuFilledDots)}</span>
-                              {"·".repeat(Math.max(0, 10 - cpuFilledDots))}
-                              {"]"}
-                            </span>
-                          </span>
+                          <MetricAsciiBar
+                            percent={node.cpuUsage}
+                            colorClass={cpuColor}
+                            textPrimaryClass={textPrimary}
+                          />
                         ) : (
                           "---"
                         )}
                       </td>
- 
+
                       {/* Memory Usage */}
                       <td className="py-3 px-2">
                         {node.online ? (
-                          <span className={textPrimary}>
-                            <span className={`font-bold ${memColor}`}>{memPercent.toFixed(1)}%</span>
-                            <span className="text-neutral-500/30 ml-1.5 font-mono">
-                              {"["}
-                              <span className={memColor}>{"■".repeat(memFilledDots)}</span>
-                              {"·".repeat(Math.max(0, 10 - memFilledDots))}
-                              {"]"}
-                            </span>
-                          </span>
+                          <MetricAsciiBar
+                            percent={memPercent}
+                            colorClass={memColor}
+                            textPrimaryClass={textPrimary}
+                          />
                         ) : (
                           "---"
                         )}
                       </td>
- 
+
                       {/* Root Disk Usage */}
                       <td className={`py-3 px-2`}>
                         {node.online ? (
-                          <span className={textPrimary}>
-                            <span className={`font-bold ${diskColor}`}>{diskPercent.toFixed(1)}%</span>
-                            <span className="text-neutral-500/30 ml-1.5 font-mono">
-                              {"["}
-                              <span className={diskColor}>{"■".repeat(diskFilledDots)}</span>
-                              {"·".repeat(Math.max(0, 10 - diskFilledDots))}
-                              {"]"}
-                            </span>
-                          </span>
+                          <MetricAsciiBar
+                            percent={diskPercent}
+                            colorClass={diskColor}
+                            textPrimaryClass={textPrimary}
+                          />
                         ) : (
                           "---"
                         )}
@@ -894,50 +859,32 @@ export function NodeTable({
               const isSelected = selectedNodeId === node.id;
               const cpuColor =
                 node.cpuUsage > 75
-                  ? theme === "dark" 
-                    ? "text-rose-400 font-bold" 
-                    : "text-rose-500 font-bold" 
-                  : node.cpuUsage > 40 
-                  ? theme === "dark" 
-                    ? "text-amber-400 font-bold" 
-                    : "text-amber-600 font-bold" 
-                  : textPrimary;
+                  ? "text-zen-danger font-bold"
+                  : node.cpuUsage > 40
+                    ? "text-zen-warning font-bold"
+                    : textPrimary;
 
               const memPercent = (node.memoryUsed / node.memoryTotal) * 100;
               const memColor =
                 memPercent > 80
-                  ? theme === "dark" 
-                    ? "text-rose-400 font-bold" 
-                    : "text-rose-500 font-bold" 
-                  : memPercent > 50 
-                  ? theme === "dark" 
-                    ? "text-amber-400 font-bold" 
-                    : "text-amber-600 font-bold" 
-                  : textPrimary;
-
-              // Simple ASCII textual micro progress indicator
-              const filledDots = Math.round((node.cpuUsage / 100) * 10);
-
-              const memFilledDots = Math.round((memPercent / 100) * 10);
+                  ? "text-zen-danger font-bold"
+                  : memPercent > 50
+                    ? "text-zen-warning font-bold"
+                    : textPrimary;
 
               const diskPercent = (node.diskUsed / node.diskTotal) * 100;
               const diskColor =
                 diskPercent > 80
-                  ? theme === "dark" 
-                    ? "text-rose-400 font-bold" 
-                    : "text-rose-500 font-bold" 
-                  : diskPercent > 50 
-                  ? theme === "dark" 
-                    ? "text-amber-400 font-bold" 
-                    : "text-amber-600 font-bold" 
-                  : textPrimary;
-              const diskFilledDots = Math.round((diskPercent / 100) * 10);
+                  ? "text-zen-danger font-bold"
+                  : diskPercent > 50
+                    ? "text-zen-warning font-bold"
+                    : textPrimary;
 
               return (
                 <div
                   key={node.id}
                   onClick={() => onSelectNode(node)}
-                  className={`cursor-pointer group flex flex-col gap-3 transition-all duration-200 p-4 sm:p-5 rounded-xl border border-zen-line bg-zen-elevate shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:border-zen-line-strong hover:shadow-[0_4px_14px_rgba(0,0,0,0.06)] ${!node.online ? "opacity-35 grayscale contrast-75 saturate-50 select-none" : ""}`}
+                  className={`cursor-pointer group flex flex-col gap-3 p-4 sm:p-5 rounded-xl border border-zen-line bg-zen-elevate shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:border-zen-line-strong hover:shadow-[0_4px_14px_rgba(0,0,0,0.06)] ${zenMotion.card} ${!node.online ? "opacity-35 grayscale contrast-75 saturate-50 select-none" : ""}`}
                 >
                   {/* Card header：标签与标题同一行，不额外占高 */}
                   <div className="flex items-center gap-2 min-w-0">
@@ -984,15 +931,11 @@ export function NodeTable({
                     <div className="flex justify-between">
                       <span>{t.cpu}:</span>
                       {node.online ? (
-                        <span className={textPrimary}>
-                          <span className={`font-bold ${cpuColor}`}>{node.cpuUsage.toFixed(1)}%</span>
-                          <span className="text-neutral-500/30 ml-1 font-mono">
-                            {"["}
-                            <span className={cpuColor}>{"■".repeat(filledDots)}</span>
-                            {"·".repeat(Math.max(0, 10 - filledDots))}
-                            {"]"}
-                          </span>
-                        </span>
+                        <MetricAsciiBar
+                          percent={node.cpuUsage}
+                          colorClass={cpuColor}
+                          textPrimaryClass={textPrimary}
+                        />
                       ) : (
                         <span>---</span>
                       )}
@@ -1000,15 +943,11 @@ export function NodeTable({
                     <div className="flex justify-between">
                       <span>{t.mem}:</span>
                       {node.online ? (
-                        <span className={textPrimary}>
-                          <span className={`font-bold ${memColor}`}>{memPercent.toFixed(1)}%</span>
-                          <span className="text-neutral-500/30 ml-1.5 font-mono">
-                            {"["}
-                            <span className={memColor}>{"■".repeat(memFilledDots)}</span>
-                            {"·".repeat(Math.max(0, 10 - memFilledDots))}
-                            {"]"}
-                          </span>
-                        </span>
+                        <MetricAsciiBar
+                          percent={memPercent}
+                          colorClass={memColor}
+                          textPrimaryClass={textPrimary}
+                        />
                       ) : (
                         <span>---</span>
                       )}
@@ -1016,15 +955,11 @@ export function NodeTable({
                     <div className="flex justify-between">
                       <span>{t.diskspace}:</span>
                       {node.online ? (
-                        <span className={textPrimary}>
-                          <span className={`font-bold ${diskColor}`}>{diskPercent.toFixed(1)}%</span>
-                          <span className="text-neutral-500/30 ml-1.5 font-mono">
-                            {"["}
-                            <span className={diskColor}>{"■".repeat(diskFilledDots)}</span>
-                            {"·".repeat(Math.max(0, 10 - diskFilledDots))}
-                            {"]"}
-                          </span>
-                        </span>
+                        <MetricAsciiBar
+                          percent={diskPercent}
+                          colorClass={diskColor}
+                          textPrimaryClass={textPrimary}
+                        />
                       ) : (
                         <span>---</span>
                       )}

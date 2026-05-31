@@ -5,13 +5,16 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { Settings } from "lucide-react";
+import { Settings, Globe } from "lucide-react";
 import { VPSNode } from "../types";
 import { translations, Lang, getLangMenuLabel, LANG_MENU_OPTIONS } from "../lib/i18n";
 import { usePublicInfo } from "@/contexts/PublicInfoContext";
 import type { ThemePreference } from "@/hooks/useThemePreference";
 import { formatResourceUsageSummary, formatTrafficGb, resolveTrafficUsedGb } from "@/lib/formatUnits";
 import { zenType, zenTouch } from "@/lib/typography";
+import { zenBorder, zenText } from "@/lib/zenSemantics";
+import { zenMotion } from "@/lib/zenMotion";
+import { NodeDistributionMapModal } from "@/components/NodeDistributionMapModal";
 
 function MobileMetricHero({
   label,
@@ -61,6 +64,7 @@ interface ConsoleHeaderProps {
   themePreference: ThemePreference;
   setThemePreference: (t: ThemePreference) => void;
   view?: "dashboard" | "detail";
+  showNodeMap?: boolean;
 }
 
 export function ConsoleHeader({
@@ -71,10 +75,12 @@ export function ConsoleHeader({
   themePreference,
   setThemePreference,
   view = "dashboard",
+  showNodeMap = false,
 }: ConsoleHeaderProps) {
   const [localTime, setLocalTime] = useState<string>("");
   const [timeZone, setTimeZone] = useState<string>("");
   const [langOpen, setLangOpen] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
   const langMenuRef = useRef<HTMLDivElement>(null);
   const t = translations[lang];
   const { publicInfo } = usePublicInfo();
@@ -178,11 +184,10 @@ export function ConsoleHeader({
     nodes.map((n) => n.flag).filter((f) => f && f !== "🌐"),
   ).size;
 
-  // Accent colors according to light/dark themes
-  const textPrimary = theme === "dark" ? "text-neutral-300" : "text-neutral-700";
-  const textMuted = theme === "dark" ? "text-neutral-400 font-medium" : "text-neutral-600 font-medium";
-  const textUnit = theme === "dark" ? "text-neutral-400" : "text-neutral-400";
-  const btnHoverColor = "hover:text-emerald-500 dark:hover:text-amber-400";
+  const textPrimary = zenText.primary;
+  const textMuted = zenText.muted;
+  const textUnit = zenText.secondary;
+  const btnHoverColor = "hover:text-zen-accent";
 
   const siteTitleClass = `text-3xl font-black tracking-tight normal-case ${textPrimary} select-none break-words`;
   const siteTitle = (
@@ -208,8 +213,8 @@ export function ConsoleHeader({
   const settingsControls = (options?: { compact?: boolean }) => {
     const compact = options?.compact ?? false;
     const rootClass = compact
-      ? `flex flex-col items-end gap-1.5 font-mono ${zenType.label} tracking-wide text-neutral-500`
-      : `flex md:justify-end items-center gap-x-6 gap-y-3 flex-wrap font-mono ${zenType.data} tracking-widest text-neutral-500`;
+      ? `flex flex-col items-end gap-1.5 font-mono ${zenType.label} tracking-wide ${zenText.subtle}`
+      : `flex md:justify-end items-center gap-x-6 gap-y-3 flex-wrap font-mono ${zenType.data} tracking-widest ${zenText.subtle}`;
 
     return (
       <div className={rootClass}>
@@ -218,7 +223,7 @@ export function ConsoleHeader({
             <button
               type="button"
               onClick={() => setLangOpen((open) => !open)}
-              className={`cursor-pointer transition-colors hover:text-emerald-500 font-bold flex items-center gap-1 ${textPrimary}`}
+              className={`cursor-pointer transition-colors hover:text-zen-accent font-bold flex items-center gap-1 ${textPrimary}`}
               aria-expanded={langOpen}
               aria-haspopup="listbox"
             >
@@ -228,11 +233,7 @@ export function ConsoleHeader({
             {langOpen ? (
               <div
                 role="listbox"
-                className={`absolute right-0 top-full mt-1.5 z-[100] min-w-[9.5rem] py-1 border shadow-lg rounded-sm ${
-                  theme === "dark"
-                    ? "bg-neutral-900 border-neutral-700"
-                    : "bg-zen-surface border-neutral-200"
-                }`}
+                className={`absolute right-0 top-full mt-1.5 z-[100] min-w-[9.5rem] py-1 border shadow-lg rounded-sm bg-zen-surface ${zenBorder.muted}`}
               >
                 {LANG_MENU_OPTIONS.map((opt) => {
                   const selected = lang === opt.value;
@@ -247,10 +248,10 @@ export function ConsoleHeader({
                         setLangPreference(opt.value);
                         setLangOpen(false);
                       }}
-                      className={`block w-full text-left px-3 py-1.5 cursor-pointer transition-colors hover:text-emerald-500 ${
+                      className={`block w-full text-left px-3 py-1.5 cursor-pointer transition-colors hover:text-zen-accent ${
                         selected
                           ? `${textPrimary} font-extrabold`
-                          : "text-neutral-500 font-bold"
+                          : `${zenText.subtle} font-bold`
                       }`}
                     >
                       {opt.label[lang]}
@@ -262,44 +263,44 @@ export function ConsoleHeader({
           </div>
 
           {!compact ? (
-            <span className="text-neutral-800 font-bold block select-none px-1">/</span>
+            <span className={`${zenText.faint} font-bold block select-none px-1`}>/</span>
           ) : null}
         </div>
 
         <div className={`flex items-center ${compact ? "gap-1.5 justify-end flex-wrap" : "gap-3"}`}>
           <button
             onClick={() => setThemePreference("auto")}
-            className={`cursor-pointer transition-all hover:text-emerald-400 font-extrabold ${
+            className={`cursor-pointer transition-all hover:text-zen-accent font-extrabold ${
               themePreference === "auto"
                 ? `${textPrimary} underline underline-offset-4`
-                : "text-neutral-500"
+                : zenText.subtle
             }`}
           >
             {t.themeAuto}
           </button>
-          <span className="text-neutral-700">·</span>
+          <span className={zenText.faint}>·</span>
           <button
             onClick={() => setThemePreference("dark")}
-            className={`cursor-pointer transition-all hover:text-emerald-400 font-extrabold ${
+            className={`cursor-pointer transition-all hover:text-zen-accent font-extrabold ${
               themePreference === "dark"
                 ? `${textPrimary} underline underline-offset-4`
-                : "text-neutral-500"
+                : zenText.subtle
             }`}
           >
             {t.themeDark}
           </button>
-          <span className="text-neutral-700">·</span>
+          <span className={zenText.faint}>·</span>
           <button
             onClick={() => setThemePreference("light")}
-            className={`cursor-pointer transition-all hover:text-emerald-400 font-extrabold ${
+            className={`cursor-pointer transition-all hover:text-zen-accent font-extrabold ${
               themePreference === "light"
                 ? `${textPrimary} underline underline-offset-4`
-                : "text-neutral-500"
+                : zenText.subtle
             }`}
           >
             {t.themeLight}
           </button>
-          <span className="text-neutral-700">·</span>
+          <span className={zenText.faint}>·</span>
           {adminEntryLink(compact ? "p-0.5" : "p-1")}
         </div>
       </div>
@@ -472,8 +473,8 @@ export function ConsoleHeader({
               <span className="h-px flex-1 bg-zen-line" aria-hidden />
             </div>
             <div className="space-y-3">
-              <div className="h-14 sm:h-16 md:h-20 lg:h-24 flex items-end">
-                <div className="flex items-baseline gap-1 md:gap-2">
+              <div className="h-14 sm:h-16 md:h-20 lg:h-24 flex items-end justify-between gap-3">
+                <div className="flex items-baseline gap-1 md:gap-2 min-w-0">
                   <span className={`text-5xl sm:text-6xl md:text-7xl lg:text-[4.75rem] xl:text-[5.5rem] font-black ${textPrimary} tracking-tighter leading-none`}>
                     {totalOnline}
                   </span>
@@ -481,6 +482,17 @@ export function ConsoleHeader({
                     / {totalNodes}
                   </span>
                 </div>
+                {showNodeMap && view === "dashboard" ? (
+                  <button
+                    type="button"
+                    aria-label={t.lblNodeDistribution}
+                    title={t.lblNodeDistribution}
+                    onClick={() => setMapOpen(true)}
+                    className={`hidden md:inline-flex shrink-0 items-center justify-center self-end rounded-full border border-zen-border-muted bg-zen-elevate/30 p-2.5 mb-1 ${zenText.muted} hover:border-zen-accent/40 hover:text-zen-accent ${zenTouch.btn} ${zenMotion.pop} cursor-pointer`}
+                  >
+                    <Globe size={22} strokeWidth={2} />
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>
@@ -581,6 +593,15 @@ export function ConsoleHeader({
         </>
       )}
 
+      {showNodeMap && view === "dashboard" ? (
+        <NodeDistributionMapModal
+          open={mapOpen}
+          onClose={() => setMapOpen(false)}
+          nodes={nodes}
+          theme={theme}
+          lang={lang}
+        />
+      ) : null}
     </header>
   );
 }

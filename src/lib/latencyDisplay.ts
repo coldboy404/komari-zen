@@ -5,6 +5,16 @@ export type LatencySample = { ms: number; t: number };
 /** CPU / mem / disk bar segment count in NodeTable. */
 export const METRIC_BAR_SEGMENTS = 10;
 
+/** Fixed width for "100.0%" / "177ms" value column — aligns `[` bars across rows. */
+export const METRIC_VALUE_WIDTH_CH = 6;
+
+/** `[` + segments + `]` */
+export const METRIC_BAR_OUTER_WIDTH_CH = METRIC_BAR_SEGMENTS + 2;
+
+/** Fixed shell: 6ch value + 12ch bar — same box width when rows are right-aligned. */
+export const metricWidgetClass =
+  "inline-grid shrink-0 grid-cols-[6ch_12ch] items-baseline gap-x-1 tabular-nums font-mono";
+
 /** Latency sparkline blocks — 2× segments, rendered half-size in the same bar width. */
 export const LATENCY_HISTORY_LEN = METRIC_BAR_SEGMENTS * 2;
 
@@ -87,29 +97,26 @@ export function resolveLatencyTier(
 }
 
 /** Muted tier colors for latency blocks. */
-export function latencyTierColor(
-  tier: LatencyTier,
-  theme: "light" | "dark",
-): string {
+export function latencyTierColor(tier: LatencyTier): string {
   if (tier === "empty") {
-    return theme === "dark" ? "text-neutral-600" : "text-neutral-400/80";
+    return "text-zen-fg-faint/80";
   }
   if (tier === "green") {
-    return theme === "dark" ? "text-emerald-600" : "text-emerald-700/85";
+    return "text-zen-success";
   }
   if (tier === "yellow") {
-    return theme === "dark" ? "text-amber-600" : "text-amber-700/90";
+    return "text-zen-warning";
   }
-  return theme === "dark" ? "text-rose-600" : "text-rose-700/90";
+  return "text-zen-danger";
 }
 
 export function latencyBlockColor(
   ms: number,
-  theme: "light" | "dark",
+  _theme: "light" | "dark",
   config: LatencyColorConfig = DEFAULT_LATENCY_COLOR_CONFIG,
   mean: number | null = null,
 ): string {
-  return latencyTierColor(resolveLatencyTier(ms, config, mean), theme);
+  return latencyTierColor(resolveLatencyTier(ms, config, mean));
 }
 
 export function padLatencyHistory(

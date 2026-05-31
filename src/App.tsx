@@ -6,6 +6,8 @@
 import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
 import { AppLayout } from "@/layouts/AppLayout";
+import { DetailPageSkeleton } from "@/components/DetailPageSkeleton";
+import { DashboardSkeleton } from "@/components/DashboardSkeleton";
 
 const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
 const InstancePage = lazy(() => import("@/pages/InstancePage"));
@@ -17,7 +19,7 @@ export default function App() {
         <Route
           index
           element={
-            <Suspense fallback={null}>
+            <Suspense fallback={<DashboardSkeleton theme="light" />}>
               <DashboardPage />
             </Suspense>
           }
@@ -25,7 +27,7 @@ export default function App() {
         <Route
           path="instance/:uuid"
           element={
-            <Suspense fallback={null}>
+            <Suspense fallback={<DetailPageSkeleton />}>
               <InstancePage />
             </Suspense>
           }

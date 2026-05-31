@@ -140,5 +140,6 @@ export type Messages = {
   privateRemark: string;
   lblNodeDistribution: string;
   mapScrollHint: string;
+  btnClose: string;
   mapRegionTooltip: (code: string, online: number, total: number) => string;
 };

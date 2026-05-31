@@ -3,20 +3,37 @@ import { usePingRecords } from "@/hooks/usePingRecords";
 import { useChartScrub } from "@/hooks/useChartScrub";
 import {
   buildPingChartRows,
-  buildProbeSeriesFromRows,
+  buildProbeSeriesNullableFromRows,
   cutPeakValues,
-  downsampleSeries,
-  downsampleSeriesAvg,
+  downsampleSeriesAvgNullable,
+  downsampleSeriesNullable,
   groupPingRecordsByTime,
-  interpolateNullsLinear,
-  smoothSeriesTriangular,
+  smoothSeriesTriangularNullable,
   taskColor,
   taskPingVolatility,
 } from "@/lib/recordTransform";
 import { formatMsg, translations, type Lang } from "@/lib/i18n";
 import { formatChartPointTime, hoursToChartLength } from "@/lib/timeRangePresets";
 import { zenType, zenTouch } from "@/lib/typography";
+import { zenFill, zenPopover, zenText } from "@/lib/zenSemantics";
 import type { PingTaskInfo } from "@/types/records";
+
+type ProbeChartPoint = { x: number; y: number; val: number };
+
+/** SVG path that breaks across null / missing samples instead of dropping to zero. */
+function buildProbeLinePath(pts: (ProbeChartPoint | null)[]): string {
+  let d = "";
+  let started = false;
+  for (const p of pts) {
+    if (!p) {
+      started = false;
+      continue;
+    }
+    d += started ? ` L ${p.x} ${p.y}` : `M ${p.x} ${p.y}`;
+    started = true;
+  }
+  return d.trim();
+}
 
 interface LatencyProbePanelProps {
   uuid: string;
@@ -60,36 +77,27 @@ export function LatencyProbePanel({
     if (peakClipping && taskKeys.length > 0) {
       rows = cutPeakValues(rows, taskKeys);
     }
-    if (taskKeys.length > 0 && rows.length > 0) {
-      rows = interpolateNullsLinear(rows, taskKeys, {
-        maxGapMultiplier: 6,
-        minCapMs: 2 * 60_000,
-        maxCapMs: 30 * 60_000,
-      });
-    }
     return rows;
   }, [anchors, grouped, tasks, peakClipping]);
 
   const targetLen = hoursToChartLength(hours);
 
   const displayDataMap = React.useMemo(() => {
-    const map: Record<string, number[]> = {};
+    const map: Record<string, (number | null)[]> = {};
     // Bucket averaging already smooths in proportion to how much we decimate, so
     // the extra moving average only needs to deburr. Keep it minimal on dense
     // ranges (high decimation) to avoid blurring genuine medium-scale features.
     const decimation = chartRows.length / Math.max(1, targetLen);
     const maRadius = decimation >= 8 ? 1 : 2;
     tasks.forEach((task) => {
-      const raw = buildProbeSeriesFromRows(chartRows, task.id);
+      const raw = buildProbeSeriesNullableFromRows(chartRows, task.id);
       if (peakClipping) {
-        // Spikes were already removed (Hampel) when building chartRows; here we
-        // anti-alias via bucket averaging and finish with a light triangular MA.
-        map[String(task.id)] = smoothSeriesTriangular(
-          downsampleSeriesAvg(raw, targetLen),
+        map[String(task.id)] = smoothSeriesTriangularNullable(
+          downsampleSeriesAvgNullable(raw, targetLen),
           maRadius,
         );
       } else {
-        map[String(task.id)] = downsampleSeries(raw, targetLen);
+        map[String(task.id)] = downsampleSeriesNullable(raw, targetLen);
       }
     });
     return map;
@@ -124,7 +132,10 @@ export function LatencyProbePanel({
     let max = 50;
     activeProbeIds.forEach((id) => {
       const d = displayDataMap[id];
-      if (d) max = Math.max(max, ...d);
+      if (!d) return;
+      for (const v of d) {
+        if (v != null && Number.isFinite(v)) max = Math.max(max, v);
+      }
     });
     return Math.ceil((max * 1.15) / 10) * 10;
   }, [activeProbeIds, displayDataMap]);
@@ -176,7 +187,8 @@ export function LatencyProbePanel({
     let y = height - paddingY;
     activeProbesList.forEach((task) => {
       const id = String(task.id);
-      const val = displayDataMap[id]?.[activeIdx] ?? 0;
+      const val = displayDataMap[id]?.[activeIdx];
+      if (val == null || !Number.isFinite(val)) return;
       const pointY =
         height -
         paddingY -
@@ -194,9 +206,11 @@ export function LatencyProbePanel({
       activeProbesList
         .map((task, idx) => {
           const id = String(task.id);
-          const val = displayDataMap[id]?.[activeIdx] ?? 0;
+          const val = displayDataMap[id]?.[activeIdx];
+          if (val == null || !Number.isFinite(val)) return null;
           return { task, id, val, color: taskColor(idx) };
         })
+        .filter((row): row is NonNullable<typeof row> => row != null)
         .sort((a, b) => a.val - b.val),
     [activeProbesList, displayDataMap, activeIdx],
   );
@@ -206,13 +220,12 @@ export function LatencyProbePanel({
 
   const strokeColor =
     theme === "dark" ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.04)";
-  const labelColor =
-    theme === "dark" ? "text-neutral-500 font-mono" : "text-neutral-400 font-mono";
+  const labelColor = `${zenText.subtle} font-mono`;
 
   if (tasks.length === 0 && !isLoading) {
     return (
       <div
-        className={`py-12 text-center ${zenType.data} uppercase tracking-widest font-mono ${theme === "dark" ? "text-neutral-500" : "text-neutral-400"}`}
+        className={`py-12 text-center ${zenType.data} uppercase tracking-widest font-mono ${zenText.faint}`}
       >
         {t.pingNoTasks}
       </div>
@@ -224,7 +237,7 @@ export function LatencyProbePanel({
       <div className="relative py-4 px-4 -mx-4 flex flex-col space-y-4 bg-transparent overflow-visible">
         <div className="flex flex-wrap justify-between items-center gap-x-2 gap-y-2 select-none w-full">
           <span
-            className={`font-extrabold tracking-wider uppercase ${zenType.body} ${theme === "dark" ? "text-neutral-300" : "text-neutral-700"} font-mono shrink-0`}
+            className={`font-extrabold tracking-wider uppercase ${zenType.body} ${zenText.primary} font-mono shrink-0`}
           >
             {t.pingLatencyDetection}
           </span>
@@ -234,17 +247,17 @@ export function LatencyProbePanel({
               onClick={() => setPeakClipping(!peakClipping)}
               className={`${zenTouch.btn} transition-all duration-150 cursor-pointer flex items-center gap-1.5 ${
                 peakClipping
-                  ? "text-emerald-600 dark:text-emerald-400 font-extrabold"
-                  : "text-neutral-400 dark:text-neutral-500 font-semibold hover:text-neutral-600 dark:hover:text-neutral-300"
+                  ? "text-zen-accent font-extrabold"
+                  : `${zenText.faint} font-semibold hover:text-zen-fg-strong`
               }`}
             >
               <span
-                className={`w-1.5 h-1.5 rounded-full ${peakClipping ? "bg-emerald-500 animate-pulse" : "bg-neutral-300 dark:bg-neutral-700"}`}
+                className={`w-1.5 h-1.5 rounded-full ${peakClipping ? "bg-zen-accent animate-pulse" : zenFill.track}`}
               />
               <span>{t.pingSmooth}</span>
             </button>
             <span
-              className={`${theme === "dark" ? "text-neutral-500" : "text-neutral-400"}`}
+              className={zenText.subtle}
             >
               {formatMsg(t.pingActiveProbes, { count: activeProbesList.length })}
             </span>
@@ -286,6 +299,7 @@ export function LatencyProbePanel({
                   if (!seriesData) return null;
                   const color = taskColor(idx);
                   const points = seriesData.map((val, i) => {
+                    if (val == null || !Number.isFinite(val)) return null;
                     const x = paddingX + (i / denominator) * chartWidth;
                     const y =
                       height -
@@ -294,24 +308,14 @@ export function LatencyProbePanel({
                         chartHeight;
                     return { x, y, val };
                   });
-                  const pathD =
-                    points.length > 0
-                      ? `M ${points[0].x} ${points[0].y} ` +
-                        points.map((p) => `L ${p.x} ${p.y}`).join(" ")
-                      : "";
+                  const pathD = buildProbeLinePath(points);
                   const selected = selectedProbes.includes(id);
                   const dimmed =
                     selectedProbes.length > 0 && !selected;
 
                   return (
                     <g key={id}>
-                      {selected && points.length > 0 && (
-                        <path
-                          d={`${pathD} L ${points[points.length - 1].x} ${height - paddingY} L ${points[0].x} ${height - paddingY} Z`}
-                          fill={color}
-                          fillOpacity={0.03}
-                        />
-                      )}
+                      {pathD ? (
                       <path
                         d={pathD}
                         fill="none"
@@ -319,9 +323,10 @@ export function LatencyProbePanel({
                         strokeWidth={1.8}
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        opacity={dimmed ? 0.2 : selectedProbes.length === 0 ? 0.85 : 1}
+                        opacity={dimmed ? 0.38 : selectedProbes.length === 0 ? 0.85 : 1}
                         className="transition-all duration-300"
                       />
+                      ) : null}
                     </g>
                   );
                 })}
@@ -345,7 +350,8 @@ export function LatencyProbePanel({
                 {isHovering &&
                   activeProbesList.map((task, idx) => {
                     const id = String(task.id);
-                    const val = displayDataMap[id]?.[activeIdx] ?? 0;
+                    const val = displayDataMap[id]?.[activeIdx];
+                    if (val == null || !Number.isFinite(val)) return null;
                     const color = taskColor(idx);
                     const y =
                       height -
@@ -366,11 +372,7 @@ export function LatencyProbePanel({
 
               {isHovering && probeSnapshot.length > 0 && (
                 <div
-                  className={`absolute z-10 min-w-[8.5rem] max-w-[min(11rem,calc(100vw-2.5rem))] rounded-md border px-2.5 py-2 shadow-lg pointer-events-none ${zenType.caption} font-mono select-none ${
-                    theme === "dark"
-                      ? "border-neutral-800/80 bg-zen-surface/95 text-neutral-200"
-                      : "border-neutral-200/90 bg-zen-surface/95 text-neutral-800"
-                  }`}
+                  className={`absolute z-10 min-w-[8.5rem] max-w-[min(11rem,calc(100vw-2.5rem))] rounded-md px-2.5 py-2 pointer-events-none ${zenType.caption} font-mono select-none ${zenPopover}`}
                   style={{
                     left: `${crosshairRatio * 100}%`,
                     top: `${(focusY / height) * 100}%`,
@@ -381,9 +383,7 @@ export function LatencyProbePanel({
                 >
                   {activeTimeLabel ? (
                     <div
-                      className={`mb-1.5 tabular-nums ${zenType.label} ${
-                        theme === "dark" ? "text-neutral-500" : "text-neutral-400"
-                      }`}
+                      className={`mb-1.5 tabular-nums ${zenType.label} ${zenText.subtle}`}
                     >
                       {activeTimeLabel}
                     </div>
@@ -399,9 +399,7 @@ export function LatencyProbePanel({
                           style={{ backgroundColor: color }}
                         />
                         <span
-                          className={`min-w-0 flex-1 truncate normal-case ${
-                            theme === "dark" ? "text-neutral-400" : "text-neutral-600"
-                          }`}
+                          className={`min-w-0 flex-1 truncate normal-case ${zenText.secondary}`}
                         >
                           {task.name}
                         </span>
@@ -431,7 +429,7 @@ export function LatencyProbePanel({
 
             <div className="space-y-2 pt-1 select-none">
               <div
-                className={`${zenType.label} zen-track-tight uppercase font-bold font-mono ${theme === "dark" ? "text-neutral-500" : "text-neutral-450"}`}
+                className={`${zenType.label} zen-track-tight uppercase font-bold font-mono ${zenText.subtle}`}
               >
                 {t.pingProbeFilter}
               </div>
@@ -449,50 +447,63 @@ export function LatencyProbePanel({
                     rawValuesByTask[id],
                   );
 
+                  const metricsTitle = `${avg >= 100 ? avg.toFixed(0) : avg.toFixed(1)}ms · ${lossVal.toFixed(1)}%${
+                    volatility !== null ? ` · ${volatility.toFixed(2)}` : ""
+                  }`;
+
                   return (
                     <button
                       key={id}
                       type="button"
                       onClick={() => onToggleProbe(id)}
-                      className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-1.5 ${zenTouch.btn} px-1 ${zenType.caption} w-full transition-all duration-150 cursor-pointer ${
+                      title={`${task.name} — ${metricsTitle}`}
+                      className={`flex items-center gap-1.5 min-w-0 w-full ${zenTouch.btn} transition-all duration-200 cursor-pointer rounded-md ${
                         isSelected
-                          ? "text-emerald-600 dark:text-emerald-400 font-extrabold bg-emerald-500/[0.04] dark:bg-emerald-500/[0.08]"
+                          ? "text-zen-accent font-extrabold border border-zen-accent/55 bg-zen-accent/12 dark:bg-zen-accent/18 px-2 py-1 shadow-[0_1px_0_rgba(0,0,0,0.04)]"
                           : isChartActive
-                            ? "text-neutral-750 dark:text-neutral-250 bg-transparent hover:bg-neutral-500/[0.03]"
-                            : "text-neutral-400 dark:text-neutral-500 opacity-25"
-                      }`}
+                            ? `${zenText.primary} bg-transparent px-1 hover:bg-zen-fill-muted/8`
+                            : `${zenText.muted} px-1 hover:text-zen-fg-strong hover:bg-zen-fill-muted/8`
+                      } ${zenType.caption}`}
                     >
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <span
-                          className="w-1 h-1 rounded-full shrink-0"
-                          style={{ backgroundColor: color }}
-                        />
-                        <span className={`truncate text-left font-sans font-medium ${zenType.caption}`}>
-                          {task.name}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0 font-mono pl-2 sm:pl-0">
-                        <span style={{ color: isChartActive ? color : "inherit" }}>
+                      <span
+                        className={`rounded-full shrink-0 transition-all duration-200 ${
+                          isSelected ? "w-1.5 h-1.5 ring-2 ring-zen-accent/40" : "w-1 h-1"
+                        }`}
+                        style={{ backgroundColor: color }}
+                      />
+                      <span
+                        className={`shrink-0 whitespace-nowrap text-left font-sans ${zenType.caption} ${
+                          isSelected ? "font-bold" : "font-medium"
+                        }`}
+                      >
+                        {task.name}
+                      </span>
+                      <span
+                        className={`min-w-0 flex-1 truncate text-right font-mono tabular-nums ${
+                          isSelected ? "font-extrabold" : isChartActive ? "font-bold" : ""
+                        }`}
+                      >
+                        <span style={{ color: isChartActive ? color : undefined }}>
                           {avg >= 100 ? avg.toFixed(0) : avg.toFixed(1)}ms
                         </span>
                         <span
-                          className={`border-l pl-1 border-neutral-400/10 ${lossVal > 0 ? "text-amber-600 dark:text-amber-500" : "text-neutral-500 dark:text-neutral-400"}`}
+                          className={`${lossVal > 0 ? "text-zen-warning" : zenText.subtle}`}
                         >
+                          {" · "}
                           {lossVal.toFixed(1)}%
                         </span>
                         {volatility !== null ? (
                           <span
-                            className={`border-l pl-1 border-neutral-400/10 ${
-                              volatility > 0.3
-                                ? "text-orange-600 dark:text-orange-400"
-                                : "text-neutral-500 dark:text-neutral-400"
-                            }`}
+                            className={
+                              volatility > 0.3 ? "text-zen-warning" : zenText.subtle
+                            }
                             title={t.pingVolatility}
                           >
+                            {" · "}
                             {volatility.toFixed(2)}
                           </span>
                         ) : null}
-                      </div>
+                      </span>
                     </button>
                   );
                 })}
@@ -501,7 +512,7 @@ export function LatencyProbePanel({
                 <button
                   type="button"
                   onClick={() => onToggleProbe("CLEAR_ALL")}
-                  className={`font-bold tracking-wider underline cursor-pointer hover:text-emerald-500 transition-colors uppercase ${zenType.label}`}
+                  className={`font-bold tracking-wider underline cursor-pointer hover:text-zen-accent transition-colors uppercase ${zenType.label}`}
                 >
                   {t.pingShowAll}
                 </button>

@@ -7,6 +7,8 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { MessageSquareText } from "lucide-react";
 import { zenType } from "@/lib/typography";
+import { zenBorder, zenInteractive, zenPopover, zenText } from "@/lib/zenSemantics";
+import { zenMotion } from "@/lib/zenMotion";
 
 interface PublicRemarkButtonProps {
   publicRemark?: string;
@@ -61,11 +63,9 @@ function RemarkSection({
   withTopGap?: boolean;
 }) {
   return (
-    <div className={withTopGap ? "mt-3 pt-3 border-t border-neutral-500/15" : ""}>
+    <div className={withTopGap ? `mt-3 pt-3 border-t ${zenBorder.line}` : ""}>
       <div
-        className={`mb-1.5 ${zenType.label} font-bold uppercase tracking-[0.2em] ${
-          theme === "dark" ? "text-neutral-500" : "text-neutral-400"
-        }`}
+        className={`mb-1.5 ${zenType.label} font-bold uppercase tracking-[0.2em] ${zenText.subtle}`}
       >
         {label}
       </div>
@@ -95,15 +95,9 @@ export function PublicRemarkButton({
 
   const iconSize = size === "sm" ? 13 : 15;
 
-  const panelClass =
-    theme === "dark"
-      ? "border border-neutral-800/50 bg-zen-surface/95 text-neutral-300 shadow-[0_4px_16px_rgba(0,0,0,0.35)]"
-      : "border border-neutral-300/25 bg-zen-surface/95 text-neutral-600 shadow-[0_4px_14px_rgba(0,0,0,0.06)]";
+  const panelClass = zenPopover;
 
-  const buttonClass =
-    theme === "dark"
-      ? "text-neutral-500 hover:text-emerald-400 focus-visible:text-emerald-400"
-      : "text-neutral-400 hover:text-emerald-600 focus-visible:text-emerald-600";
+  const buttonClass = zenInteractive.iconIdle;
 
   const ariaLabel = [publicText && publicLabel, privateText && privateLabel]
     .filter(Boolean)
@@ -150,7 +144,7 @@ export function PublicRemarkButton({
         type="button"
         aria-label={ariaLabel}
         title={ariaLabel}
-        className={`inline-flex shrink-0 cursor-pointer items-center justify-center rounded-sm p-0.5 transition-colors focus:outline-none ${buttonClass} ${className}`.trim()}
+        className={`inline-flex shrink-0 cursor-pointer items-center justify-center rounded-sm p-0.5 focus:outline-none ${zenMotion.pop} ${buttonClass} ${className}`.trim()}
         onClick={togglePanel}
         onMouseEnter={showPanel}
         onMouseLeave={hidePanel}
@@ -169,9 +163,8 @@ export function PublicRemarkButton({
               top: coords.top,
               left: coords.left,
               zIndex: 9999,
-              opacity: visible ? 1 : 0,
             }}
-            className={`max-w-[min(320px,calc(100vw-16px))] rounded-sm px-3 py-2 font-mono ${zenType.caption} leading-relaxed tracking-wide ${panelClass}`}
+            className={`max-w-[min(320px,calc(100vw-16px))] rounded-sm px-3 py-2 font-mono ${zenType.caption} leading-relaxed tracking-wide ${panelClass} ${zenMotion.popover} ${visible ? `${zenMotion.popoverVisible} pointer-events-auto` : "pointer-events-none"}`}
             onMouseEnter={showPanel}
             onMouseLeave={hidePanel}
             onClick={(e) => e.stopPropagation()}

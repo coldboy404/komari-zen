@@ -4,17 +4,21 @@
  */
 
 import React, { Suspense, lazy } from "react";
-import { Outlet, useMatch } from "react-router-dom";
+import { useMatch } from "react-router-dom";
+import { AnimatedOutlet } from "@/components/AnimatedOutlet";
 import { ConsoleHeader } from "@/components/ConsoleHeader";
 import { DashboardSkeleton } from "@/components/DashboardSkeleton";
 import { useKomariNodes } from "@/hooks/useKomariNodes";
 import { useKomariVersion } from "@/hooks/useKomariVersion";
 import { useThemeSettings } from "@/hooks/useThemeSettings";
+import { useColorScheme } from "@/hooks/useColorScheme";
+import { useThemeFont } from "@/hooks/useThemeFont";
 import { useSiteMeta } from "@/hooks/useSiteMeta";
 import { useThemePreference } from "@/hooks/useThemePreference";
 import { useLangPreference } from "@/hooks/useLangPreference";
 import { translations } from "@/lib/i18n";
 import { zenType } from "@/lib/typography";
+import { zenBorder, zenInteractive, zenText } from "@/lib/zenSemantics";
 import { sanitizeFooterHtml } from "@/lib/sanitizeHtml";
 
 const NodeDistributionMap = lazy(() =>
@@ -29,15 +33,21 @@ export function AppLayout() {
   const { theme, preference: themePreference, setPreference: setThemePreference } =
     useThemePreference();
   const { lang, setPreference: setLangPreference } = useLangPreference();
-  const { customFooterHtml, showNodeMap } = useThemeSettings();
+  const { customFooterHtml, showNodeMap, colorScheme, fontScheme } =
+    useThemeSettings();
+  useColorScheme(
+    theme,
+    colorScheme.presetId,
+    colorScheme.overrides,
+  );
+  useThemeFont(fontScheme);
   const komariVersion = useKomariVersion();
   const themeVersion = __THEME_VERSION__;
   const t = translations[lang];
 
   const isDetail = Boolean(useMatch({ path: "/instance/:uuid", end: true }));
 
-  const textMutedClass =
-    theme === "dark" ? "text-neutral-500/85" : "text-neutral-500";
+  const textMutedClass = `${zenText.subtle}/85`;
   const bgClass = "bg-zen-bg text-zen-fg";
 
   if (isLoading) {
@@ -65,13 +75,17 @@ export function AppLayout() {
     );
   }
 
+  const outletContext = { nodes, lang, theme };
+
   return (
     <div
       className={`min-h-screen px-4 pt-4 pb-5 sm:px-6 sm:pt-6 sm:pb-6 md:px-12 md:pt-12 md:pb-8 select-none antialiased transition-colors duration-300 ${bgClass}`}
     >
       <div className="mx-auto w-full max-w-[1600px] @container">
         <div
-          className={isDetail ? "space-y-4 md:space-y-5" : "space-y-10 md:space-y-16 lg:space-y-20"}
+          className={`transition-[gap] duration-500 ease-out ${
+            isDetail ? "space-y-4 md:space-y-5" : "space-y-10 md:space-y-16 lg:space-y-20"
+          }`}
         >
           <ConsoleHeader
             nodes={nodes}
@@ -81,33 +95,32 @@ export function AppLayout() {
             themePreference={themePreference}
             setThemePreference={setThemePreference}
             view={isDetail ? "detail" : "dashboard"}
+            showNodeMap={showNodeMap}
           />
 
-          {isDetail ? (
-            <main className="space-y-4 md:space-y-5">
-              <Outlet context={{ nodes, lang, theme }} />
-            </main>
-          ) : (
-            <div className="space-y-2 md:space-y-3">
-              {showNodeMap ? (
-                <Suspense fallback={null}>
-                  <NodeDistributionMap
-                    nodes={nodes}
-                    theme={theme}
-                    lang={lang}
-                  />
-                </Suspense>
-              ) : null}
-
-              <main>
-                <Outlet context={{ nodes, lang, theme }} />
-              </main>
+          {!isDetail && showNodeMap ? (
+            <div className="md:hidden">
+              <Suspense fallback={null}>
+                <NodeDistributionMap
+                  nodes={nodes}
+                  theme={theme}
+                  lang={lang}
+                />
+              </Suspense>
             </div>
-          )}
+          ) : null}
+
+          <main
+            className={
+              isDetail ? "space-y-4 md:space-y-5" : "space-y-2 md:space-y-3"
+            }
+          >
+            <AnimatedOutlet context={outletContext} />
+          </main>
         </div>
 
         <footer
-          className={`mt-6 md:mt-7 pt-5 sm:pt-6 md:pt-8 border-t ${theme === "dark" ? "border-neutral-900" : "border-neutral-200"} text-center ${textMutedClass} leading-relaxed`}
+          className={`mt-6 md:mt-7 pt-5 sm:pt-6 md:pt-8 border-t ${zenBorder.default} text-center ${textMutedClass} leading-relaxed`}
         >
           <div className={`${zenType.caption} sm:text-xs tracking-wide font-mono`}>
             <div className="sm:hidden whitespace-nowrap">
@@ -115,7 +128,7 @@ export function AppLayout() {
                 href="https://github.com/komari-monitor/komari"
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`${theme === "dark" ? "text-neutral-400" : "text-neutral-600"} font-semibold hover:text-emerald-500 underline-offset-2 hover:underline transition-colors`}
+                className={`${zenInteractive.link}`}
               >
                 Komari
               </a>
@@ -127,7 +140,7 @@ export function AppLayout() {
                 href="https://github.com/qwer-xyz/komari-zen"
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`${theme === "dark" ? "text-neutral-400" : "text-neutral-600"} font-semibold hover:text-emerald-500 underline-offset-2 hover:underline transition-colors`}
+                className={`${zenInteractive.link}`}
               >
                 Zen
               </a>
@@ -139,7 +152,7 @@ export function AppLayout() {
                 href="https://github.com/komari-monitor/komari"
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`${theme === "dark" ? "text-neutral-400" : "text-neutral-600"} font-semibold hover:text-emerald-500 underline-offset-2 hover:underline transition-colors`}
+                className={`${zenInteractive.link}`}
               >
                 Komari Monitor
               </a>
@@ -151,7 +164,7 @@ export function AppLayout() {
                 href="https://github.com/qwer-xyz/komari-zen"
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`${theme === "dark" ? "text-neutral-400" : "text-neutral-600"} font-semibold hover:text-emerald-500 underline-offset-2 hover:underline transition-colors`}
+                className={`${zenInteractive.link}`}
               >
                 Komari Zen
               </a>
@@ -160,7 +173,7 @@ export function AppLayout() {
           </div>
           {customFooterHtml.trim() ? (
             <div
-              className={`mt-2 text-center ${zenType.caption} sm:text-xs leading-relaxed [&_a]:underline [&_a]:hover:text-emerald-500`}
+              className={`mt-2 text-center ${zenType.caption} sm:text-xs leading-relaxed [&_a]:underline [&_a]:hover:text-zen-accent`}
               dangerouslySetInnerHTML={{
                 __html: sanitizeFooterHtml(customFooterHtml),
               }}

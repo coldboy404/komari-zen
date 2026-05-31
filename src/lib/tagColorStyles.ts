@@ -1,4 +1,5 @@
 import type { RadixTagColor } from "@/lib/parseNodeTags";
+import { zenInteractive } from "@/lib/zenSemantics";
 
 const DEFAULT_CYCLE: RadixTagColor[] = [
   "green",
@@ -14,7 +15,7 @@ type ThemeMode = "light" | "dark";
 const TEXT_STYLES: Record<ThemeMode, Record<RadixTagColor, string>> = {
   dark: {
     ruby: "text-rose-400",
-    gray: "text-neutral-400",
+    gray: "text-zen-fg-muted",
     gold: "text-yellow-400",
     bronze: "text-orange-300",
     brown: "text-amber-400",
@@ -42,7 +43,7 @@ const TEXT_STYLES: Record<ThemeMode, Record<RadixTagColor, string>> = {
   },
   light: {
     ruby: "text-rose-600",
-    gray: "text-neutral-600",
+    gray: "text-zen-fg-muted",
     gold: "text-yellow-700",
     bronze: "text-orange-700",
     brown: "text-amber-800",
@@ -71,8 +72,8 @@ const TEXT_STYLES: Record<ThemeMode, Record<RadixTagColor, string>> = {
 };
 
 const NEUTRAL_TEXT: Record<ThemeMode, string> = {
-  dark: "text-neutral-500",
-  light: "text-neutral-500",
+  dark: "text-zen-fg-subtle",
+  light: "text-zen-fg-subtle",
 };
 
 export function getTagTextClass(
@@ -85,12 +86,10 @@ export function getTagTextClass(
   return TEXT_STYLES[theme][resolved] ?? NEUTRAL_TEXT[theme];
 }
 
-export function getTagSeparatorClass(theme: ThemeMode): string {
-  return theme === "dark" ? "text-neutral-600" : "text-neutral-400/70";
+export function getTagSeparatorClass(_theme: ThemeMode): string {
+  return "text-zen-fg-faint/70";
 }
 
-export function getTagOverflowTextClass(theme: ThemeMode): string {
-  return theme === "dark"
-    ? "text-neutral-500 hover:text-emerald-400"
-    : "text-neutral-400 hover:text-emerald-600";
+export function getTagOverflowTextClass(_theme: ThemeMode): string {
+  return `${zenInteractive.iconIdle}`;
 }

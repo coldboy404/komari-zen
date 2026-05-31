@@ -4,6 +4,14 @@ import type { NodeViewMode } from "@/hooks/useViewMode";
 import { parseDefaultViewMode } from "@/hooks/useViewMode";
 import { parseThemeSelectOption } from "@/lib/themeOptionValue";
 import {
+  colorSchemeFromTheme,
+  type ColorSchemeSettings,
+} from "@/lib/colorScheme";
+import {
+  fontSchemeFromTheme,
+  type FontSchemeSettings,
+} from "@/lib/fontScheme";
+import {
   latencyColorConfigFromTheme,
   type LatencyColorConfig,
 } from "@/lib/latencyDisplay";
@@ -18,6 +26,8 @@ export type ThemeSettings = {
   showLatency: boolean;
   showNodeMap: boolean;
   latencyColorConfig: LatencyColorConfig;
+  colorScheme: ColorSchemeSettings;
+  fontScheme: FontSchemeSettings;
 };
 
 export function useThemeSettings(): ThemeSettings {
@@ -37,5 +47,7 @@ export function useThemeSettings(): ThemeSettings {
     showLatency: raw.showLatency !== false,
     showNodeMap: raw.showNodeMap !== false,
     latencyColorConfig: latencyColorConfigFromTheme(raw),
+    colorScheme: colorSchemeFromTheme(raw),
+    fontScheme: fontSchemeFromTheme(raw),
   };
 }

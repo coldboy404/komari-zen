@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { prefetchPublicInfo } from "@/lib/prefetchPublicInfo";
+import { syncThemeAppearanceFromPublicSettings } from "@/lib/themeAppearance";
 
 export interface PublicInfo {
   allow_cors: boolean;
@@ -16,12 +18,6 @@ export interface PublicInfo {
   theme: string;
   theme_settings: Record<string, unknown> | null;
   [key: string]: unknown;
-}
-
-interface PublicInfoResponse {
-  data: PublicInfo;
-  message: string;
-  status: string;
 }
 
 interface PublicInfoContextType {
@@ -46,15 +42,12 @@ export const PublicInfoProvider: React.FC<{ children: React.ReactNode }> = ({
     setError(null);
     setIsLoading(true);
 
-    fetch("/api/public")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+    prefetchPublicInfo(true)
+      .then((data) => {
+        setPublicInfo(data);
+        if (data?.theme_settings && typeof data.theme_settings === "object") {
+          syncThemeAppearanceFromPublicSettings(data.theme_settings);
         }
-        return response.json() as Promise<PublicInfoResponse>;
-      })
-      .then((resp) => {
-        setPublicInfo(resp.data ?? null);
       })
       .catch((err: Error) => {
         setError(err.message || "获取公开信息失败");

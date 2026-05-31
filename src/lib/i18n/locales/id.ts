@@ -139,5 +139,6 @@ export const id = {
   privateRemark: "Catatan Pribadi",
   lblNodeDistribution: "DISTRIBUSI NODE",
   mapScrollHint: "Geser kiri/kanan",
+  btnClose: "Tutup",
   mapRegionTooltip: (code, online, total) => `${code} · ${online}/${total} online`,
 } satisfies Messages;

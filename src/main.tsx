@@ -6,7 +6,12 @@ import { LiveDataProvider } from "./contexts/LiveDataContext.tsx";
 import { NodeListProvider } from "./contexts/NodeListContext.tsx";
 import { PublicInfoProvider } from "./contexts/PublicInfoContext.tsx";
 import { RPC2Provider } from "./contexts/RPC2Context.tsx";
+import { prefetchPublicInfo } from "@/lib/prefetchPublicInfo";
+import { bootstrapThemeAppearance } from "@/lib/themeAppearance";
 import "./index.css";
+
+bootstrapThemeAppearance();
+void prefetchPublicInfo();
 
 function Bootstrap() {
   useEffect(() => {
