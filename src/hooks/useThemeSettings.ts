@@ -23,6 +23,8 @@ export type ThemeSettings = {
   offlineServerPosition: string;
   showExpiryTime: boolean;
   showAutoRenewal: boolean;
+  dashboardCpuMetric: DashboardCpuMetric;
+  dashboardBandwidthMetric: DashboardBandwidthMetric;
   customFooterHtml: string;
   defaultViewMode: NodeViewMode;
   defaultSortField: string;
@@ -35,11 +37,23 @@ export type ThemeSettings = {
 };
 
 export type LogoShape = "Circle" | "RoundedSquare" | "Square";
+export type DashboardCpuMetric = "Average" | "Max";
+export type DashboardBandwidthMetric = "Total" | "Max";
 
 function parseLogoShape(raw: unknown): LogoShape {
   const shape = parseThemeSelectOption(raw, "RoundedSquare");
   if (shape === "Circle" || shape === "Square") return shape;
   return "RoundedSquare";
+}
+
+function parseDashboardCpuMetric(raw: unknown): DashboardCpuMetric {
+  const metric = parseThemeSelectOption(raw, "Average");
+  return metric === "Max" ? "Max" : "Average";
+}
+
+function parseDashboardBandwidthMetric(raw: unknown): DashboardBandwidthMetric {
+  const metric = parseThemeSelectOption(raw, "Total");
+  return metric === "Max" ? "Max" : "Total";
 }
 
 export function useThemeSettings(): ThemeSettings {
@@ -57,6 +71,10 @@ export function useThemeSettings(): ThemeSettings {
     ),
     showExpiryTime: raw.showExpiryTime !== false,
     showAutoRenewal: raw.showAutoRenewal !== false,
+    dashboardCpuMetric: parseDashboardCpuMetric(raw.dashboardCpuMetric),
+    dashboardBandwidthMetric: parseDashboardBandwidthMetric(
+      raw.dashboardBandwidthMetric,
+    ),
     customFooterHtml: (raw.customFooterHtml as string | undefined) ?? "",
     defaultViewMode: parseDefaultViewMode(raw.defaultViewMode),
     defaultSortField: parseThemeSelectOption(raw.defaultSortField, "Default"),

@@ -64,6 +64,7 @@ export type Messages = {
   backToList: string;
   lblClusterNodeStatus: string;
   lblNetworkThroughput: string;
+  lblNetworkThroughputMax: string;
   lblCores: string;
   lblMemory: string;
   lblDisk: string;
@@ -74,6 +75,7 @@ export type Messages = {
   themeLight: string;
   themeAuto: string;
   lblCpuAvg: string;
+  lblCpuMax: string;
   lblInboundRxShort: string;
   lblOutboundTxShort: string;
   unitDays: string;

@@ -84,6 +84,11 @@ function getTrafficTypeFullLabel(
   }
 }
 
+const unlimitedTrafficBadgeClass =
+  "border-zen-accent/35 bg-zen-accent/12 text-zen-accent";
+const unlimitedTrafficSymbolClass =
+  "inline-block scale-[1.45] leading-none tracking-normal";
+
 function DetailSection({
   children,
   delay = 0,
@@ -1359,14 +1364,20 @@ export function NodeDetail({
                       </div>
                     </div>
                   </div>
-                  {node.bandwidthTotal > 0 && (
-                    <div className={`flex justify-between items-baseline pt-3 mt-3 border-t ${zenBorder.line} ${zenType.caption} font-mono`}>
+                  <div className={`flex justify-between items-baseline pt-3 mt-3 border-t ${zenBorder.line} ${zenType.caption} font-mono`}>
+                    {node.bandwidthTotal <= 0 ? (
+                      <span
+                        className={`inline-flex shrink-0 px-1 py-px rounded-sm border ${zenType.micro} font-bold tracking-wide leading-none ${unlimitedTrafficBadgeClass}`}
+                      >
+                        <span className={unlimitedTrafficSymbolClass}>∞</span>
+                      </span>
+                    ) : (
                       <span className={`${textMuted} uppercase font-bold tracking-wider`}>
                         {getTrafficTypeFullLabel(node.trafficLimitType, t)}
                       </span>
-                      <span className={`font-bold ${textPrimary}`}>{formatNodeTraffic(node)}</span>
-                    </div>
-                  )}
+                    )}
+                    <span className={`font-bold ${textPrimary}`}>{formatNodeTraffic(node)}</span>
+                  </div>
                 </div>
               </div>
             </DetailSection>

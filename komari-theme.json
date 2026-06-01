@@ -156,6 +156,34 @@
         }
       },
       {
+        "key": "dashboardCpuMetric",
+        "type": "select",
+        "name": {
+          "en": "Dashboard CPU metric",
+          "zh-CN": "首页 CPU 指标"
+        },
+        "options": "平均值,最大值",
+        "default": "平均值",
+        "help": {
+          "en": "Average or max CPU usage.",
+          "zh-CN": "显示平均或最大 CPU 使用率。"
+        }
+      },
+      {
+        "key": "dashboardBandwidthMetric",
+        "type": "select",
+        "name": {
+          "en": "Dashboard bandwidth metric",
+          "zh-CN": "首页带宽指标"
+        },
+        "options": "总值,最大值",
+        "default": "总值",
+        "help": {
+          "en": "Total or max current bandwidth.",
+          "zh-CN": "显示当前总带宽或最大单节点带宽。"
+        }
+      },
+      {
         "name": {
           "en": "Latency",
           "zh-CN": "延迟检测"

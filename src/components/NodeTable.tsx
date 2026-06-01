@@ -75,6 +75,11 @@ function trafficTypeBadgeClass(type: TrafficLimitType | undefined): string {
   }
 }
 
+const unlimitedTrafficBadgeClass =
+  "border-zen-accent/35 bg-zen-accent/12 text-zen-accent";
+const unlimitedTrafficSymbolClass =
+  "inline-block scale-[1.45] leading-none tracking-normal";
+
 function getOSDetails(os: string, arch: string) {
   const upperOS = os.toUpperCase();
   let osKey = "";
@@ -431,7 +436,13 @@ export function NodeTable({
   const renderTrafficValue = (node: VPSNode) => (
     <span className="inline-flex items-center gap-1.5 min-w-0">
       <span className="truncate">{formatNodeTraffic(node)}</span>
-      {node.bandwidthTotal > 0 && (
+      {node.bandwidthTotal <= 0 ? (
+        <span
+          className={`inline-flex shrink-0 px-1 py-px rounded-sm border ${zenType.micro} font-bold tracking-wide leading-none ${unlimitedTrafficBadgeClass}`}
+        >
+          <span className={unlimitedTrafficSymbolClass}>∞</span>
+        </span>
+      ) : (
         <span
           className={`inline-flex shrink-0 px-1 py-px rounded-sm border ${zenType.micro} font-bold tracking-wide leading-none ${trafficTypeBadgeClass(node.trafficLimitType)}`}
         >
@@ -522,12 +533,17 @@ export function NodeTable({
   const handleSort = useCallback((field: SortField) => {
     userSortedRef.current = true;
     if (sortField === field) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+      if (sortOrder === "desc") {
+        setSortOrder("asc");
+      } else {
+        setSortField("default");
+        setSortOrder(initialSortOrder);
+      }
     } else {
       setSortField(field);
       setSortOrder("desc"); // Default to desc for performance metrics
     }
-  }, [sortField, sortOrder]);
+  }, [initialSortOrder, sortField, sortOrder]);
 
   const getSortOrderIcon = (order: SortOrder) => (order === "asc" ? "▲" : "▼");
 
@@ -636,8 +652,14 @@ export function NodeTable({
                           userSortedRef.current = true;
                           if (opt.value === "default") {
                             setSortField("default");
+                            setSortOrder(initialSortOrder);
                           } else if (isCurrent) {
-                            setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                            if (sortOrder === "desc") {
+                              setSortOrder("asc");
+                            } else {
+                              setSortField("default");
+                              setSortOrder(initialSortOrder);
+                            }
                           } else {
                             setSortField(opt.value);
                             setSortOrder("desc");

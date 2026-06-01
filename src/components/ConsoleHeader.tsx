@@ -220,7 +220,13 @@ export function ConsoleHeader({
   const langMenuRef = useRef<HTMLDivElement>(null);
   const t = translations[lang];
   const { publicInfo } = usePublicInfo();
-  const { showLogo, customLogoUrl, logoShape } = useThemeSettings();
+  const {
+    showLogo,
+    customLogoUrl,
+    logoShape,
+    dashboardCpuMetric,
+    dashboardBandwidthMetric,
+  } = useThemeSettings();
   const siteName = publicInfo?.sitename || "Komari";
   const siteDescription = publicInfo?.description?.trim();
   const mapNodes = useStableMapNodes(nodes);
@@ -269,10 +275,26 @@ export function ConsoleHeader({
   const avgCpuUsage = onlineNodes.length
     ? onlineNodes.reduce((sum, n) => sum + n.cpuUsage, 0) / onlineNodes.length
     : 0;
+  const maxCpuUsage = onlineNodes.length
+    ? Math.max(...onlineNodes.map((n) => n.cpuUsage))
+    : 0;
+  const dashboardCpuUsage =
+    dashboardCpuMetric === "Max" ? maxCpuUsage : avgCpuUsage;
+  const dashboardCpuLabel =
+    dashboardCpuMetric === "Max" ? t.lblCpuMax : t.lblCpuAvg;
 
   const totalRxSpeed = nodes.reduce((sum, n) => sum + (n.online ? n.netSpeedIn : 0), 0);
   const totalTxSpeed = nodes.reduce((sum, n) => sum + (n.online ? n.netSpeedOut : 0), 0);
   const totalRealtimeSpeed = totalRxSpeed + totalTxSpeed; // in KB/s
+  const maxRealtimeSpeed = onlineNodes.length
+    ? Math.max(...onlineNodes.map((n) => n.netSpeedIn + n.netSpeedOut))
+    : 0;
+  const dashboardRealtimeSpeed =
+    dashboardBandwidthMetric === "Max" ? maxRealtimeSpeed : totalRealtimeSpeed;
+  const dashboardBandwidthLabel =
+    dashboardBandwidthMetric === "Max"
+      ? t.lblNetworkThroughputMax
+      : t.lblNetworkThroughput;
 
   const isTB = totalBillableUsed >= 1024;
   const formattedBandwidth = isTB
@@ -283,14 +305,14 @@ export function ConsoleHeader({
   // Format speed value and unit separately for the big text metric
   let speedVal = "0.0";
   let speedUnit = "KB/s";
-  if (totalRealtimeSpeed >= 1024 * 1024) {
-    speedVal = (totalRealtimeSpeed / (1024 * 1024)).toFixed(2);
+  if (dashboardRealtimeSpeed >= 1024 * 1024) {
+    speedVal = (dashboardRealtimeSpeed / (1024 * 1024)).toFixed(2);
     speedUnit = "GB/s";
-  } else if (totalRealtimeSpeed >= 1024) {
-    speedVal = (totalRealtimeSpeed / 1024).toFixed(1);
+  } else if (dashboardRealtimeSpeed >= 1024) {
+    speedVal = (dashboardRealtimeSpeed / 1024).toFixed(1);
     speedUnit = "MB/s";
   } else {
-    speedVal = totalRealtimeSpeed.toFixed(0);
+    speedVal = dashboardRealtimeSpeed.toFixed(0);
     speedUnit = "KB/s";
   }
 
@@ -497,15 +519,15 @@ export function ConsoleHeader({
               textUnit={textUnit}
             />
             <MobileMetricHero
-              label={t.lblCpuAvg}
-              value={avgCpuUsage.toFixed(1)}
+              label={dashboardCpuLabel}
+              value={dashboardCpuUsage.toFixed(1)}
               suffix="%"
               textMuted={textMuted}
               textPrimary={textPrimary}
               textUnit={textUnit}
             />
             <MobileMetricHero
-              label={t.lblNetworkThroughput}
+              label={dashboardBandwidthLabel}
               value={speedVal}
               suffix={speedUnit}
               textMuted={textMuted}
@@ -647,11 +669,11 @@ export function ConsoleHeader({
             </div>
           </div>
 
-          {/* Metric 2: Average CPU usage across online nodes */}
+          {/* Metric 2: CPU usage across online nodes */}
           <div className="flex flex-col justify-start space-y-4 md:border-l md:border-zen-line md:pl-8 lg:pl-12">
             <div className="flex items-center gap-3">
               <span className={`${zenType.section} zen-track-tight ${textMuted} font-mono uppercase shrink-0`}>
-                {t.lblCpuAvg}
+                {dashboardCpuLabel}
               </span>
               <span className="h-px flex-1 bg-zen-line" aria-hidden />
             </div>
@@ -659,7 +681,7 @@ export function ConsoleHeader({
               <div className="h-14 sm:h-16 md:h-20 lg:h-24 flex items-end">
                 <div className="flex items-baseline gap-1 md:gap-2 select-none">
                   <span className={`text-5xl sm:text-6xl md:text-7xl lg:text-[4.75rem] xl:text-[5.5rem] font-black ${textPrimary} tracking-tighter leading-none`}>
-                    {avgCpuUsage.toFixed(1)}
+                    {dashboardCpuUsage.toFixed(1)}
                   </span>
                   <span className={`text-xl sm:text-2xl md:text-3xl lg:text-[2.25rem] ${textUnit} font-medium font-mono select-none pb-0.5`}>
                     %
@@ -673,7 +695,7 @@ export function ConsoleHeader({
           <div className="flex flex-col justify-start space-y-4 md:border-l md:border-zen-line md:pl-8 lg:pl-12">
             <div className="flex items-center gap-3">
               <span className={`${zenType.section} zen-track-tight ${textMuted} font-mono uppercase shrink-0`}>
-                {t.lblNetworkThroughput}
+                {dashboardBandwidthLabel}
               </span>
               <span className="h-px flex-1 bg-zen-line" aria-hidden />
             </div>
