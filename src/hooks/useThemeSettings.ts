@@ -23,6 +23,8 @@ export type ThemeSettings = {
   offlineServerPosition: string;
   showExpiryTime: boolean;
   showAutoRenewal: boolean;
+  showResidualValue: boolean;
+  residualValueCurrency: string;
   dashboardCpuMetric: DashboardCpuMetric;
   dashboardBandwidthMetric: DashboardBandwidthMetric;
   customFooterHtml: string;
@@ -71,6 +73,11 @@ export function useThemeSettings(): ThemeSettings {
     ),
     showExpiryTime: raw.showExpiryTime !== false,
     showAutoRenewal: raw.showAutoRenewal !== false,
+    showResidualValue: raw.showResidualValue === true,
+    residualValueCurrency:
+      typeof raw.residualValueCurrency === "string"
+        ? raw.residualValueCurrency.trim()
+        : "CNY",
     dashboardCpuMetric: parseDashboardCpuMetric(raw.dashboardCpuMetric),
     dashboardBandwidthMetric: parseDashboardBandwidthMetric(
       raw.dashboardBandwidthMetric,

@@ -15,11 +15,14 @@ import {
 } from "@/hooks/useThemeSettings";
 import type { ThemePreference } from "@/hooks/useThemePreference";
 import { formatResourceUsageSummary, formatTrafficGb, resolveTrafficUsedGb } from "@/lib/formatUnits";
+import { formatResidualCurrency } from "@/lib/residualValue";
 import { zenType, zenTouch } from "@/lib/typography";
 import { zenBorder, zenText } from "@/lib/zenSemantics";
 import { zenMotion } from "@/lib/zenMotion";
 import { NodeDistributionMapModal } from "@/components/NodeDistributionMapModal";
 import type { NodeDistributionMapNode } from "@/components/NodeDistributionMap";
+import { ResidualValueModal } from "@/components/ResidualValueModal";
+import { useResidualValueSummary } from "@/hooks/useResidualValueSummary";
 
 const NodeDistributionMap = lazy(() =>
   import("@/components/NodeDistributionMap").then((m) => ({
@@ -28,6 +31,82 @@ const NodeDistributionMap = lazy(() =>
 );
 
 const KOMARI_DEFAULT_LOGO_URL = "/favicon.ico";
+
+function mobileCopy(lang: Lang) {
+  switch (lang) {
+    case "en":
+      return {
+        nodeStatus: "NODE",
+        cpuAvg: "CPU",
+        cpuMax: "MAX CPU",
+        bandwidth: "BW",
+        bandwidthMax: "MAX BW",
+        traffic: "TRAFFIC",
+        regions: "REGIONS",
+        residual: "RV",
+        rx: "RX",
+        tx: "TX",
+        threads: "THR",
+      };
+    case "id":
+      return {
+        nodeStatus: "NODE",
+        cpuAvg: "CPU",
+        cpuMax: "CPU MAX",
+        bandwidth: "BW",
+        bandwidthMax: "BW MAX",
+        traffic: "TRAFIK",
+        regions: "WIL.",
+        residual: "SISA",
+        rx: "RX",
+        tx: "TX",
+        threads: "THR",
+      };
+    case "ja":
+      return {
+        nodeStatus: "ノード",
+        cpuAvg: "CPU",
+        cpuMax: "CPU最大",
+        bandwidth: "帯域",
+        bandwidthMax: "最大帯域",
+        traffic: "通信量",
+        regions: "地域",
+        residual: "残額",
+        rx: "RX",
+        tx: "TX",
+        threads: "スレッド",
+      };
+    case "zh-TW":
+      return {
+        nodeStatus: "節點",
+        cpuAvg: "CPU",
+        cpuMax: "CPU最大",
+        bandwidth: "頻寬",
+        bandwidthMax: "最大頻寬",
+        traffic: "流量",
+        regions: "地區",
+        residual: "剩餘",
+        rx: "RX",
+        tx: "TX",
+        threads: "執行緒",
+      };
+    case "zh":
+    default:
+      return {
+        nodeStatus: "节点",
+        cpuAvg: "CPU",
+        cpuMax: "CPU最大",
+        bandwidth: "带宽",
+        bandwidthMax: "最大带宽",
+        traffic: "流量",
+        regions: "地区",
+        residual: "剩余",
+        rx: "RX",
+        tx: "TX",
+        threads: "线程",
+      };
+  }
+}
 
 function logoShapeClass(shape: LogoShape) {
   if (shape === "Circle") return "rounded-full";
@@ -116,7 +195,7 @@ function MobileMetricHero({
   return (
     <div className="min-w-0 flex flex-col items-center gap-1 px-0.5 text-center">
       <span
-        className={`${zenType.label} zen-track-tight ${textMuted} font-mono uppercase line-clamp-2 leading-tight w-full`}
+        className={`${zenType.label} zen-track-tight ${textMuted} w-full truncate whitespace-nowrap font-mono uppercase leading-tight`}
       >
         {label}
       </span>
@@ -143,12 +222,14 @@ function LocalClock({
   loadingLabel,
   textMuted,
   textPrimary,
+  compact = false,
   className = "",
 }: {
   label: string;
   loadingLabel: string;
   textMuted: string;
   textPrimary: string;
+  compact?: boolean;
   className?: string;
 }) {
   const [localTime, setLocalTime] = useState<string>("");
@@ -161,20 +242,24 @@ function LocalClock({
       setTimeZone(tz);
       setLocalTime(
         now.toLocaleString(undefined, {
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
           hour: "2-digit",
           minute: "2-digit",
           second: "2-digit",
           hour12: false,
+          ...(compact
+            ? {}
+            : {
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+              }),
         }),
       );
     };
     updateTime();
     const interval = window.setInterval(updateTime, 1000);
     return () => window.clearInterval(interval);
-  }, []);
+  }, [compact]);
 
   return (
     <div className={className}>
@@ -216,20 +301,29 @@ export function ConsoleHeader({
 }: ConsoleHeaderProps) {
   const [langOpen, setLangOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
+  const [residualOpen, setResidualOpen] = useState(false);
   const [mapExpanded, setMapExpanded] = useState(false);
   const langMenuRef = useRef<HTMLDivElement>(null);
   const t = translations[lang];
+  const tm = mobileCopy(lang);
   const { publicInfo } = usePublicInfo();
   const {
     showLogo,
     customLogoUrl,
     logoShape,
+    showResidualValue,
+    residualValueCurrency,
     dashboardCpuMetric,
     dashboardBandwidthMetric,
   } = useThemeSettings();
   const siteName = publicInfo?.sitename || "Komari";
   const siteDescription = publicInfo?.description?.trim();
   const mapNodes = useStableMapNodes(nodes);
+  const residualValue = useResidualValueSummary(
+    nodes,
+    showResidualValue && view === "dashboard",
+    residualValueCurrency,
+  );
 
   useEffect(() => {
     if (!langOpen) return;
@@ -282,6 +376,8 @@ export function ConsoleHeader({
     dashboardCpuMetric === "Max" ? maxCpuUsage : avgCpuUsage;
   const dashboardCpuLabel =
     dashboardCpuMetric === "Max" ? t.lblCpuMax : t.lblCpuAvg;
+  const mobileCpuLabel =
+    dashboardCpuMetric === "Max" ? tm.cpuMax : tm.cpuAvg;
 
   const totalRxSpeed = nodes.reduce((sum, n) => sum + (n.online ? n.netSpeedIn : 0), 0);
   const totalTxSpeed = nodes.reduce((sum, n) => sum + (n.online ? n.netSpeedOut : 0), 0);
@@ -295,6 +391,10 @@ export function ConsoleHeader({
     dashboardBandwidthMetric === "Max"
       ? t.lblNetworkThroughputMax
       : t.lblNetworkThroughput;
+  const mobileBandwidthLabel =
+    dashboardBandwidthMetric === "Max"
+      ? tm.bandwidthMax
+      : tm.bandwidth;
 
   const isTB = totalBillableUsed >= 1024;
   const formattedBandwidth = isTB
@@ -321,6 +421,14 @@ export function ConsoleHeader({
   const totalRegions = new Set(
     nodes.map((n) => n.flag).filter((f) => f && f !== "🌐"),
   ).size;
+
+  const residualValueLabel = residualValue.loading
+    ? "..."
+    : formatResidualCurrency(
+        residualValue.summary.totalValue,
+        residualValue.summary.baseCurrency,
+        lang === "zh" ? "zh-CN" : lang,
+      );
 
   const textPrimary = zenText.primary;
   const textMuted = zenText.muted;
@@ -352,6 +460,37 @@ export function ConsoleHeader({
       <Settings size={15} strokeWidth={2.25} aria-hidden />
     </a>
   );
+
+  const residualValueButton = ({
+    className = "",
+    align = "right",
+    showInlineLabel = false,
+  }: {
+    className?: string;
+    align?: "left" | "right";
+    showInlineLabel?: boolean;
+  } = {}) => {
+    if (!showResidualValue || view !== "dashboard") return null;
+    const alignClass =
+      align === "left"
+        ? "self-start justify-start text-left"
+        : "justify-end text-right";
+    return (
+      <button
+        type="button"
+        onClick={() => setResidualOpen(true)}
+        className={`inline-flex min-w-0 items-baseline gap-1.5 font-bold ${alignClass} ${textPrimary} hover:text-zen-accent underline-offset-4 hover:underline cursor-pointer ${className}`}
+        title={t.residualValueTitle}
+      >
+        <span className="min-w-0 truncate">{residualValueLabel}</span>
+        {showInlineLabel ? (
+          <span className={`${zenType.micro} ${textMuted} shrink-0 font-semibold`}>
+            {tm.residual}
+          </span>
+        ) : null}
+      </button>
+    );
+  };
 
   const settingsControls = (options?: { compact?: boolean }) => {
     const compact = options?.compact ?? false;
@@ -473,6 +612,7 @@ export function ConsoleHeader({
             loadingLabel={t.loading}
             textMuted={textMuted}
             textPrimary={textPrimary}
+            compact
             className="flex min-w-0 flex-1 flex-col text-left font-mono"
           />
           <div className="shrink-0 pt-0.5">{settingsControls({ compact: true })}</div>
@@ -511,7 +651,7 @@ export function ConsoleHeader({
           {/* Mobile: three hero metrics in one row */}
           <div className="grid grid-cols-3 gap-1.5 pt-6 md:hidden">
             <MobileMetricHero
-              label={t.lblClusterNodeStatus}
+              label={tm.nodeStatus}
               value={String(totalOnline)}
               suffix={` / ${totalNodes}`}
               textMuted={textMuted}
@@ -519,7 +659,7 @@ export function ConsoleHeader({
               textUnit={textUnit}
             />
             <MobileMetricHero
-              label={dashboardCpuLabel}
+              label={mobileCpuLabel}
               value={dashboardCpuUsage.toFixed(1)}
               suffix="%"
               textMuted={textMuted}
@@ -527,7 +667,7 @@ export function ConsoleHeader({
               textUnit={textUnit}
             />
             <MobileMetricHero
-              label={dashboardBandwidthLabel}
+              label={mobileBandwidthLabel}
               value={speedVal}
               suffix={speedUnit}
               textMuted={textMuted}
@@ -543,30 +683,41 @@ export function ConsoleHeader({
             {/* Traffic totals — horizontal row */}
             <div className="grid grid-cols-3 gap-1.5 pb-3 text-center">
               <div className="flex flex-col items-center gap-1 min-w-0">
-                <span className={`${textMuted} leading-tight`}>{t.cumulativeBandwidth}</span>
+                <span className={`${textMuted} leading-tight`}>{tm.traffic}</span>
                 <span className={`font-bold ${textPrimary}`}>
                   {formattedBandwidth} {bandwidthUnit}
                 </span>
               </div>
               <div className="flex flex-col items-center gap-1 min-w-0">
-                <span className={`${textMuted} leading-tight`}>{t.lblInboundRxShort || "RX"}</span>
+                <span className={`${textMuted} leading-tight`}>{tm.rx}</span>
                 <span className={`font-bold ${textPrimary}`}>{formatTrafficGb(totalUsedIn)}</span>
               </div>
               <div className="flex flex-col items-center gap-1 min-w-0">
-                <span className={`${textMuted} leading-tight`}>{t.lblOutboundTxShort || "TX"}</span>
+                <span className={`${textMuted} leading-tight`}>{tm.tx}</span>
                 <span className={`font-bold ${textPrimary}`}>{formatTrafficGb(totalUsedOut)}</span>
               </div>
             </div>
             {/* Overview list */}
             <div className="space-y-1.5 pt-3">
             <div className="flex justify-between gap-3 py-0.5">
-              <span className={`${textMuted} shrink-0`}>{t.lblTotalRegions}:</span>
-              <span className={`font-bold text-right ${textPrimary}`}>{totalRegions}</span>
+              <span className={`${textMuted} shrink-0`}>{tm.regions}:</span>
+              <span className="flex min-w-0 items-center justify-end gap-2 text-right">
+                <span className={`font-bold ${textPrimary}`}>{totalRegions}</span>
+                {showResidualValue ? (
+                  <>
+                    <span className={zenText.faint}>/</span>
+                    {residualValueButton({
+                      className: "max-w-[min(13rem,64vw)]",
+                      showInlineLabel: true,
+                    })}
+                  </>
+                ) : null}
+              </span>
             </div>
             <div className="flex justify-between gap-3 py-0.5">
               <span className={`${textMuted} shrink-0`}>{t.lblCores}:</span>
               <span className={`font-bold text-right ${textPrimary}`}>
-                {totalCores} {t.lblThreads}
+                {totalCores} {tm.threads}
               </span>
             </div>
             <div className="flex justify-between gap-3 py-0.5">
@@ -716,10 +867,20 @@ export function ConsoleHeader({
 
           {/* Unified supplementary stats — aligned matrix below the heroes */}
           <div className="hidden md:grid md:grid-cols-4 pt-7 mt-1 border-t border-zen-line font-mono [&>*]:border-zen-line [&>*]:px-5 [&>*]:py-3 [&>*:nth-child(4n+1)]:pl-0 [&>*:nth-child(4n)]:pr-0 [&>*:not(:nth-child(4n+1))]:border-l [&>*:nth-child(n+5)]:border-t">
-            <div className="flex flex-col gap-1">
-              <span className={`${zenType.label} zen-track-tight uppercase ${textMuted}`}>{t.lblOfflineNodes}</span>
-              <span className={`${zenType.data} font-bold ${totalNodes - totalOnline > 0 ? "text-red-500" : textPrimary}`}>{totalNodes - totalOnline}</span>
-            </div>
+            {showResidualValue ? (
+              <div className="flex flex-col gap-1">
+                <span className={`${zenType.label} zen-track-tight uppercase ${textMuted}`}>{t.residualValueTitle}</span>
+                {residualValueButton({
+                  className: `${zenType.data}`,
+                  align: "left",
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1">
+                <span className={`${zenType.label} zen-track-tight uppercase ${textMuted}`}>{t.lblOfflineNodes}</span>
+                <span className={`${zenType.data} font-bold ${totalNodes - totalOnline > 0 ? "text-red-500" : textPrimary}`}>{totalNodes - totalOnline}</span>
+              </div>
+            )}
             <div className="flex flex-col gap-1">
               <span className={`${zenType.label} zen-track-tight uppercase ${textMuted}`}>{t.lblTotalRegions}</span>
               <span className={`${zenType.data} font-bold ${textPrimary}`}>{totalRegions}</span>
@@ -771,6 +932,17 @@ export function ConsoleHeader({
           onClose={() => setMapOpen(false)}
           nodes={mapNodes}
           theme={theme}
+          lang={lang}
+        />
+      ) : null}
+      {showResidualValue && view === "dashboard" ? (
+        <ResidualValueModal
+          open={residualOpen}
+          onClose={() => setResidualOpen(false)}
+          summary={residualValue.summary}
+          exchangeRates={residualValue.exchangeRates}
+          loading={residualValue.loading}
+          error={residualValue.error}
           lang={lang}
         />
       ) : null}

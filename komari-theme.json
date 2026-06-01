@@ -101,6 +101,32 @@
         }
       },
       {
+        "key": "showResidualValue",
+        "type": "switch",
+        "name": {
+          "en": "Show residual value",
+          "zh-CN": "显示剩余价值"
+        },
+        "default": false,
+        "help": {
+          "en": "Calculate remaining node value.",
+          "zh-CN": "统计节点剩余价值。"
+        }
+      },
+      {
+        "key": "residualValueCurrency",
+        "type": "string",
+        "name": {
+          "en": "Residual value currency",
+          "zh-CN": "剩余价值主货币"
+        },
+        "default": "CNY",
+        "help": {
+          "en": "Enter an ISO 4217 three-letter currency code, such as CNY, USD, or EUR.",
+          "zh-CN": "输入 ISO 4217 三字母货币代码，例如 CNY、USD、EUR。"
+        }
+      },
+      {
         "key": "defaultViewMode",
         "type": "select",
         "name": {
