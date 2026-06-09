@@ -51,6 +51,8 @@ export type ResolvedColorVars = Record<string, string>;
 export type ColorSchemeOverrides = {
   bgLight?: string;
   bgDark?: string;
+  bgImageLight?: string;
+  bgImageDark?: string;
   surfaceLight?: string;
   surfaceDark?: string;
   accentLight?: string;

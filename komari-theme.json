@@ -2,7 +2,7 @@
   "name": "Komari Zen",
   "short": "Zen",
   "description": "基于极简主义设计理念的 Komari 主题。",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "author": "qwer-xyz",
   "url": "https://github.com/qwer-xyz/komari-zen",
   "preview": "preview.png",
@@ -318,80 +318,112 @@
       },
       {
         "key": "customBgLight",
-        "type": "string",
+        "type": "select",
         "name": {
           "en": "Custom page background (light)",
           "zh-CN": "自定义页面背景（亮色）"
         },
+        "options": "默认,暖色,红色,黄色,绿色,蓝色,紫色,黑白,自定义背景",
+        "default": "默认",
+        "help": {
+          "en": "Choose a light page background color, or Custom background to use an image URL below.",
+          "zh-CN": "选择亮色页面背景颜色；选择“自定义背景”时使用下方图片链接。"
+        }
+      },
+      {
+        "key": "customBgLightImage",
+        "type": "string",
+        "name": {
+          "en": "Custom background image URL (light)",
+          "zh-CN": "自定义背景图片链接（亮色）"
+        },
         "default": "",
         "help": {
-          "en": "Light background override.",
-          "zh-CN": "亮色背景覆盖。"
+          "en": "Used only when light page background is Custom background. Supports image URLs.",
+          "zh-CN": "仅在亮色页面背景选择“自定义背景”时生效，支持图片链接。"
         }
       },
       {
         "key": "customBgDark",
-        "type": "string",
+        "type": "select",
         "name": {
           "en": "Custom page background (dark)",
           "zh-CN": "自定义页面背景（暗色）"
         },
+        "options": "默认,深暖色,深红色,深黄色,深绿色,深蓝色,深紫色,深黑白,自定义背景",
+        "default": "默认",
+        "help": {
+          "en": "Choose a dark page background color, or Custom background to use an image URL below.",
+          "zh-CN": "选择暗色页面背景颜色；选择“自定义背景”时使用下方图片链接。"
+        }
+      },
+      {
+        "key": "customBgDarkImage",
+        "type": "string",
+        "name": {
+          "en": "Custom background image URL (dark)",
+          "zh-CN": "自定义背景图片链接（暗色）"
+        },
         "default": "",
         "help": {
-          "en": "Dark background override.",
-          "zh-CN": "暗色背景覆盖。"
+          "en": "Used only when dark page background is Custom background. Supports image URLs.",
+          "zh-CN": "仅在暗色页面背景选择“自定义背景”时生效，支持图片链接。"
         }
       },
       {
         "key": "customSurfaceLight",
-        "type": "string",
+        "type": "select",
         "name": {
           "en": "Custom surface color (light)",
           "zh-CN": "自定义卡片/弹层背景（亮色）"
         },
-        "default": "",
+        "options": "默认,纸色,白色,暖色,红色,黄色,绿色,蓝色,紫色,黑白",
+        "default": "默认",
         "help": {
-          "en": "Light surface override.",
-          "zh-CN": "亮色卡片背景。"
+          "en": "Choose the light card and modal background color.",
+          "zh-CN": "选择亮色卡片/弹层背景颜色。"
         }
       },
       {
         "key": "customSurfaceDark",
-        "type": "string",
+        "type": "select",
         "name": {
           "en": "Custom surface color (dark)",
           "zh-CN": "自定义卡片/弹层背景（暗色）"
         },
-        "default": "",
+        "options": "默认,石墨,炭黑,墨色,深暖色,深红色,深蓝色,深黑白",
+        "default": "默认",
         "help": {
-          "en": "Dark surface override.",
-          "zh-CN": "暗色卡片背景。"
+          "en": "Choose the dark card and modal background color.",
+          "zh-CN": "选择暗色卡片/弹层背景颜色。"
         }
       },
       {
         "key": "customAccentLight",
-        "type": "string",
+        "type": "select",
         "name": {
           "en": "Custom accent color (light)",
           "zh-CN": "自定义强调色（亮色）"
         },
-        "default": "",
+        "options": "默认,琥珀,红色,橙色,黄色,绿色,青色,蓝色,紫色,粉色,锌灰",
+        "default": "默认",
         "help": {
-          "en": "Light accent override.",
-          "zh-CN": "亮色强调色。"
+          "en": "Choose the light accent color.",
+          "zh-CN": "选择亮色强调色。"
         }
       },
       {
         "key": "customAccentDark",
-        "type": "string",
+        "type": "select",
         "name": {
           "en": "Custom accent color (dark)",
           "zh-CN": "自定义强调色（暗色）"
         },
-        "default": "",
+        "options": "默认,琥珀,红色,橙色,黄色,绿色,青色,蓝色,紫色,粉色,锌灰",
+        "default": "默认",
         "help": {
-          "en": "Dark accent override.",
-          "zh-CN": "暗色强调色。"
+          "en": "Choose the dark accent color.",
+          "zh-CN": "选择暗色强调色。"
         }
       },
       {

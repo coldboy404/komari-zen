@@ -43,11 +43,24 @@ export function AppLayout() {
 
   const textMutedClass = `${zenText.subtle}/85`;
   const bgClass = "bg-zen-bg text-zen-fg";
+  const backgroundImageUrl = theme === "dark"
+    ? colorScheme.overrides.bgImageDark
+    : colorScheme.overrides.bgImageLight;
+  const backgroundStyle = backgroundImageUrl
+    ? ({
+        backgroundImage: `url(${backgroundImageUrl})`,
+        backgroundAttachment: "fixed",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        backgroundSize: "cover",
+      } satisfies React.CSSProperties)
+    : undefined;
 
   if (isLoading) {
     return (
       <div
         className={`min-h-screen px-4 pt-4 pb-5 sm:px-6 sm:pt-6 sm:pb-6 md:px-12 md:pt-12 md:pb-8 antialiased ${bgClass}`}
+        style={backgroundStyle}
       >
         <div className="mx-auto w-full max-w-[1600px] @container">
           <DashboardSkeleton theme={theme} />
@@ -60,6 +73,7 @@ export function AppLayout() {
     return (
       <div
         className={`min-h-screen flex flex-col items-center justify-center gap-3 font-mono text-sm p-8 ${bgClass}`}
+        style={backgroundStyle}
       >
         <span className="text-red-400">
           {t.errorLoadNodes} {error}
@@ -74,6 +88,7 @@ export function AppLayout() {
   return (
     <div
       className={`min-h-screen px-4 pt-4 pb-5 sm:px-6 sm:pt-6 sm:pb-6 md:px-12 md:pt-12 md:pb-8 select-none antialiased transition-colors duration-300 ${bgClass}`}
+      style={backgroundStyle}
     >
       <div className="mx-auto w-full max-w-[1600px] @container">
         <div

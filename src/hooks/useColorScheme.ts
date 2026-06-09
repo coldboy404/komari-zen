@@ -21,6 +21,8 @@ export function useColorScheme(
     presetId,
     overrides.bgLight,
     overrides.bgDark,
+    overrides.bgImageLight,
+    overrides.bgImageDark,
     overrides.surfaceLight,
     overrides.surfaceDark,
     overrides.accentLight,
