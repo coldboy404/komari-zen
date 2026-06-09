@@ -134,7 +134,7 @@ export function AppLayout() {
               ) : null}
               <span className="mx-2 opacity-40">·</span>
               <a
-                href="https://github.com/qwer-xyz/komari-zen"
+                href="https://github.com/coldboy404/komari-zen"
                 target="_blank"
                 rel="noopener noreferrer"
                 className={`${zenInteractive.link}`}
@@ -158,7 +158,7 @@ export function AppLayout() {
               ) : null}
               <span className="ml-4 md:ml-6">Theme by</span>{" "}
               <a
-                href="https://github.com/qwer-xyz/komari-zen"
+                href="https://github.com/coldboy404/komari-zen"
                 target="_blank"
                 rel="noopener noreferrer"
                 className={`${zenInteractive.link}`}

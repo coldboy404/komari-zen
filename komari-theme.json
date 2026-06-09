@@ -2,9 +2,9 @@
   "name": "Komari Zen",
   "short": "Zen",
   "description": "基于极简主义设计理念的 Komari 主题。",
-  "version": "1.0.9",
-  "author": "qwer-xyz",
-  "url": "https://github.com/qwer-xyz/komari-zen",
+  "version": "1.0.10",
+  "author": "coldboy404",
+  "url": "https://github.com/coldboy404/komari-zen",
   "preview": "preview.png",
   "configuration": {
     "type": "managed",

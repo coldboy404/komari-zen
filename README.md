@@ -11,7 +11,7 @@ Gemini Flash 3.5 设计（Google AI Studio），~~Composer 2.5 实现~~，额度
 
 ## 安装
 
-1. 在 [Releases](https://github.com/qwer-xyz/komari-zen/releases) 下载对应版本的 `zen-theme-v*.zip`（例如 `zen-theme-v1.0.0.zip`）
+1. 在 [Releases](https://github.com/coldboy404/komari-zen/releases) 下载对应版本的 `zen-theme-v*.zip`（例如 `zen-theme-v1.0.10.zip`）
 2. 进入 Komari 后台 → 主题管理 → 上传该 zip 并启用
 3. 可在 Komari 后台 → Zen 主题管理 → 进行主题个性化设置。
 
